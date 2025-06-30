@@ -32,9 +32,12 @@ class TableSection(QtWidgets.QGroupBox):
         self.total_label = QtWidgets.QLabel("Total: 0.00")
         layout.addWidget(self.total_label, alignment=QtCore.Qt.AlignRight)
 
-        self.table.itemChanged.connect(self.update_total)
-        self.table.itemChanged.connect(
-            lambda item: self.table.update_row_tooltip(item.row())
+        # Keep the total label in sync with table edits
+        self.table.cellChanged.connect(lambda _r, _c: self.update_total())
+        self.table.model().rowsInserted.connect(lambda *_: self.update_total())
+        self.table.model().rowsRemoved.connect(lambda *_: self.update_total())
+        self.table.cellChanged.connect(
+            lambda r, _c: self.table.update_row_tooltip(r)
         )
 
         # Track the row index of the last classified transaction
@@ -165,7 +168,13 @@ class MonthlyTab(QtWidgets.QWidget):
             self.sections.append(section)
             # Show a separator at the top by default
             section.set_last_classified_row(-1)
-            section.table.itemChanged.connect(self.update_summary)
+            section.table.cellChanged.connect(lambda *_: self.update_summary())
+            section.table.model().rowsInserted.connect(
+                lambda *_: self.update_summary()
+            )
+            section.table.model().rowsRemoved.connect(
+                lambda *_: self.update_summary()
+            )
 
         self.summary = SummarySection()
         layout.addWidget(self.summary)

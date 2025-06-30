@@ -107,8 +107,16 @@ def create_numbers_layout(data: Dict[str, Any]) -> QtWidgets.QTabWidget:
             # Apply tooltip after all items are set
             table.update_row_tooltip(r)
 
-        table.itemChanged.connect(
-            lambda _item, tbl=table, lbl=total_label: _update_total(tbl, lbl)
+        # Recalculate totals whenever the table content changes
+        table.cellChanged.connect(
+            lambda _r, _c, tbl=table, lbl=total_label: _update_total(tbl, lbl)
+        )
+        model = table.model()
+        model.rowsInserted.connect(
+            lambda *_args, tbl=table, lbl=total_label: _update_total(tbl, lbl)
+        )
+        model.rowsRemoved.connect(
+            lambda *_args, tbl=table, lbl=total_label: _update_total(tbl, lbl)
         )
         _update_total(table, total_label)
 

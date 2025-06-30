@@ -140,8 +140,16 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.tables.append(table)
                 self.total_labels.append(total_label)
 
-                table.itemChanged.connect(
-                    lambda _item, tbl=table: self._update_table_total(tbl)
+                # Keep totals up to date as the table changes
+                table.cellChanged.connect(
+                    lambda _r, _c, tbl=table: self._update_table_total(tbl)
+                )
+                model = table.model()
+                model.rowsInserted.connect(
+                    lambda *_args, tbl=table: self._update_table_total(tbl)
+                )
+                model.rowsRemoved.connect(
+                    lambda *_args, tbl=table: self._update_table_total(tbl)
                 )
 
         # Bottom action buttons
