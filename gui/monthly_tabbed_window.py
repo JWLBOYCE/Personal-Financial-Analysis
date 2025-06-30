@@ -95,6 +95,43 @@ class TableSection(QtWidgets.QGroupBox):
         self.total_label.setText(f"Total: {total:.2f}")
 
 
+class SummarySection(QtWidgets.QGroupBox):
+    """Panel showing monthly totals."""
+
+    def __init__(self) -> None:
+        super().__init__("Monthly Summary")
+        layout = QtWidgets.QGridLayout(self)
+
+        self._labels = {}
+        rows = [
+            ("Total Income", "income"),
+            ("Total Expenses", "expenses"),
+            ("Net Cashflow", "net"),
+            ("Total Credit Card Charges", "credit"),
+        ]
+        for i, (title, key) in enumerate(rows):
+            header = QtWidgets.QLabel(title + ":")
+            value = QtWidgets.QLabel("0.00")
+            font = QtGui.QFont(value.font())
+            font.setBold(True)
+            value.setFont(font)
+            layout.addWidget(header, i, 0)
+            layout.addWidget(value, i, 1)
+            self._labels[key] = value
+
+    def set_values(
+        self,
+        income: float,
+        expenses: float,
+        net: float,
+        credit: float,
+    ) -> None:
+        self._labels["income"].setText(f"{income:.2f}")
+        self._labels["expenses"].setText(f"{expenses:.2f}")
+        self._labels["net"].setText(f"{net:.2f}")
+        self._labels["credit"].setText(f"{credit:.2f}")
+
+
 class MonthlyTab(QtWidgets.QWidget):
     """Widget representing a single month's data."""
 
@@ -102,7 +139,6 @@ class MonthlyTab(QtWidgets.QWidget):
         "Income Table",
         "Expenses Table",
         "Credit Card Transactions",
-        "Monthly Summary",
     ]
 
     def __init__(self, month_name: str) -> None:
@@ -116,8 +152,41 @@ class MonthlyTab(QtWidgets.QWidget):
             self.sections.append(section)
             # Show a separator at the top by default
             section.set_last_classified_row(-1)
+            section.table.itemChanged.connect(self.update_summary)
+
+        self.summary = SummarySection()
+        layout.addWidget(self.summary)
 
         layout.addStretch(1)
+
+        self.update_summary()
+
+    # --------------------------------------------------------------
+    # Summary helpers
+    # --------------------------------------------------------------
+    def _calc_total(self, section: TableSection) -> float:
+        total = 0.0
+        for row in range(section.table.rowCount()):
+            first = section.table.item(row, 0)
+            if first and first.data(SEPARATOR_ROLE):
+                continue
+            item = section.table.item(row, 2)
+            if item is None:
+                continue
+            try:
+                total += float(item.text())
+            except (TypeError, ValueError):
+                pass
+        return total
+
+    def update_summary(self) -> None:
+        if len(self.sections) < 3:
+            return
+        income = self._calc_total(self.sections[0])
+        expenses = self._calc_total(self.sections[1])
+        credit = self._calc_total(self.sections[2])
+        net = income - expenses
+        self.summary.set_values(income, expenses, net, credit)
 
 
 class MonthlyTabbedWindow(QtWidgets.QMainWindow):
@@ -139,4 +208,4 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
             self.tabs.addTab(tab, month)
 
 
-__all__ = ["MonthlyTabbedWindow", "MonthlyTab", "TableSection"]
+__all__ = ["MonthlyTabbedWindow", "MonthlyTab", "TableSection", "SummarySection"]
