@@ -6,7 +6,9 @@ import os
 import sqlite3
 from datetime import datetime
 from difflib import SequenceMatcher
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List, Iterable
+import shutil
+import glob
 
 from PyQt5 import QtWidgets
 
@@ -27,6 +29,26 @@ def _ensure_db(conn: sqlite3.Connection) -> None:
     """Ensure required tables exist using the schema."""
     with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
         conn.executescript(f.read())
+
+
+def _backup_db(db_path: str = DB_PATH) -> None:
+    """Create a timestamped backup of the database and keep only 5 recent."""
+    backup_dir = os.path.dirname(db_path)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_name = f"backup_finance_{timestamp}.bak"
+    backup_path = os.path.join(backup_dir, backup_name)
+    os.makedirs(backup_dir, exist_ok=True)
+    shutil.copy2(db_path, backup_path)
+
+    backups = sorted(
+        glob.glob(os.path.join(backup_dir, "backup_finance_*.bak")),
+        reverse=True,
+    )
+    for old in backups[5:]:
+        try:
+            os.remove(old)
+        except OSError:
+            pass
 
 
 class Categoriser:
@@ -241,3 +263,12 @@ def categorise_transaction(description: str, amount: float, db_path: str = DB_PA
         return Transaction(description, amount, category, is_recurring)
     finally:
         conn.close()
+
+
+def categorise_transactions(transactions: Iterable[tuple[str, float]], db_path: str = DB_PATH) -> list[Transaction]:
+    """Categorise multiple transactions and backup the database."""
+    results = []
+    for desc, amt in transactions:
+        results.append(categorise_transaction(desc, amt, db_path))
+    _backup_db(db_path)
+    return results
