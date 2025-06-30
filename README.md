@@ -12,6 +12,14 @@ Personal Financial Analysis is a desktop application for tracking and analysing 
 - Basic admin tools for editing keyword mappings used during categorisation
 - Simple password-protected login screen (configured via `.env`)
 
+
+## Demo Mode
+
+The project ships with a small set of safe example data in the `demo/` folder.
+Set `DEMO_MODE=true` in the `.env` file to run the application using the demo
+CSV and database. If `demo/demo_finance.db` is missing the application will
+create it automatically from `demo/demo_finance.sql`.
+
 ## Installation
 
 1. Create and activate a virtual environment (optional)
