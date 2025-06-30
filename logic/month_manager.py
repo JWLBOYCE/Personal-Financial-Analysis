@@ -6,8 +6,17 @@ import os
 import sqlite3
 from datetime import datetime
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "finance.db")
-SCHEMA_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "schema.sql")
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+DB_PATH = os.path.join(BASE_DIR, "demo", "demo_finance.db") if DEMO_MODE else os.path.join(BASE_DIR, "data", "finance.db")
+
+if DEMO_MODE and not os.path.exists(DB_PATH):
+    sql_path = os.path.join(BASE_DIR, "demo", "demo_finance.sql")
+    conn = sqlite3.connect(DB_PATH)
+    with open(sql_path, "r", encoding="utf-8") as f:
+        conn.executescript(f.read())
+    conn.close()
+SCHEMA_PATH = os.path.join(BASE_DIR, "schema.sql")
 
 
 def _ensure_db(conn: sqlite3.Connection) -> None:

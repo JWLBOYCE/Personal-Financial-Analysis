@@ -10,8 +10,17 @@ from typing import List, Dict, Any
 
 import pdfplumber
 
-ARCHIVE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "archived")
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "finance.db")
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+ARCHIVE_DIR = os.path.join(BASE_DIR, "archived")
+DB_PATH = os.path.join(BASE_DIR, "demo", "demo_finance.db") if DEMO_MODE else os.path.join(BASE_DIR, "data", "finance.db")
+
+if DEMO_MODE and not os.path.exists(DB_PATH):
+    sql_path = os.path.join(BASE_DIR, "demo", "demo_finance.sql")
+    conn = sqlite3.connect(DB_PATH)
+    with open(sql_path, "r", encoding="utf-8") as f:
+        conn.executescript(f.read())
+    conn.close()
 
 PATTERN = re.compile(
     r"(?P<date>\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\s+(?P<desc>.*?)\s+(?P<amt>-?\$?[\d,]+\.\d{2})$"

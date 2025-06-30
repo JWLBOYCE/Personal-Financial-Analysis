@@ -12,6 +12,13 @@ This project is a desktop financial analysis tool built with PyQt and SQLite. It
 - `import_logs` table tracks archived imports
 - `main.py` - application entry point
 
+## Demo Mode
+
+The project ships with a small set of safe example data in the `demo/` folder.
+Set `DEMO_MODE=true` in the `.env` file to run the application using the demo
+CSV and database. If `demo/demo_finance.db` is missing the application will
+create it automatically from `demo/demo_finance.sql`.
+
 ## Login
 
 The application starts with a simple login window. The password hash is stored
