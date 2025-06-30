@@ -1,4 +1,7 @@
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
+
+# Custom role used to store whether a transaction is recurring
+IS_RECURRING_ROLE = QtCore.Qt.UserRole + 1
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import sqlite3
@@ -150,6 +153,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.export_btn,
         ):
             button_layout.addWidget(btn)
+        self.recurring_btn.clicked.connect(self.toggle_recurring)
         right_layout.addWidget(button_widget)
         right_layout.setStretchFactor(self.stack, 1)
 
@@ -173,6 +177,14 @@ class MainWindow(QtWidgets.QMainWindow):
                 )
                 cat_item = QtWidgets.QTableWidgetItem("Misc")
                 amt_item = QtWidgets.QTableWidgetItem(f"{(i+1)*10:.2f}")
+                # Mark the first row as recurring for demo purposes
+                is_recurring = i == 0
+                for item in (date_item, desc_item, cat_item, amt_item):
+                    item.setData(IS_RECURRING_ROLE, is_recurring)
+                    if is_recurring:
+                        font = QtGui.QFont(item.font())
+                        font.setItalic(True)
+                        item.setFont(font)
                 for col, item in enumerate(
                     [date_item, desc_item, cat_item, amt_item]
                 ):
@@ -340,6 +352,25 @@ class MainWindow(QtWidgets.QMainWindow):
         conn.commit()
         conn.close()
         self.load_mappings()
+
+    def toggle_recurring(self) -> None:
+        """Toggle recurring flag for selected rows in the current table."""
+        index = self.tab_bar.currentIndex()
+        if index >= len(self.tables):
+            return
+        table = self.tables[index]
+        rows = {idx.row() for idx in table.selectedIndexes()}
+        for row in rows:
+            first_item = table.item(row, 0)
+            current = bool(first_item.data(IS_RECURRING_ROLE)) if first_item else False
+            for col in range(table.columnCount()):
+                item = table.item(row, col)
+                if item is None:
+                    continue
+                item.setData(IS_RECURRING_ROLE, not current)
+                font = QtGui.QFont(item.font())
+                font.setItalic(not current)
+                item.setFont(font)
 
     def retrain_classifier(self) -> None:
         reply = QtWidgets.QMessageBox.question(
