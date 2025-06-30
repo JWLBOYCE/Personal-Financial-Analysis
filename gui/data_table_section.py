@@ -16,7 +16,7 @@ class DataTableSection(TableSection):
         super().__init__(title)
         self.key = key
         self.month = month
-        self.table.itemChanged.connect(self._item_changed)
+        self.table.cellChanged.connect(self._item_changed)
         self.table.model().rowsInserted.connect(self._rows_inserted)
         self.table.model().rowsRemoved.connect(self._rows_removed)
         self._load_data()
@@ -111,7 +111,8 @@ class DataTableSection(TableSection):
         for row in range(start, end + 1):
             self._insert_row(row)
 
-    def _item_changed(self, row: int, _col: int) -> None:  # noqa: D401 - Qt slot
+    def _item_changed(self, _row: int, _col: int) -> None:  # noqa: D401 - Qt slot
+        row = _row
         item = self.table.item(row, 0)
         if not item:
             return
