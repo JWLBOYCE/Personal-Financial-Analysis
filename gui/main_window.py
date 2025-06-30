@@ -46,6 +46,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Left sidebar with months
         self.month_list = QtWidgets.QListWidget()
+        self.month_list.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+        )
         months = [
             "Jan 2023",
             "Feb 2023",
@@ -74,6 +77,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Stacked widget for pages
         self.stack = QtWidgets.QStackedWidget()
         right_layout.addWidget(self.stack)
+        right_layout.setStretchFactor(self.stack, 1)
 
         self.tables = []  # transaction tables for Income/Expenses/Credit Card
         self.total_labels = []  # labels showing total amounts for each table
@@ -87,13 +91,23 @@ class MainWindow(QtWidgets.QMainWindow):
                     ["Category", "Income", "Expense"]
                 )
                 self.summary_table.horizontalHeader().setStretchLastSection(True)
+                self.summary_table.setSizeAdjustPolicy(
+                    QtWidgets.QAbstractScrollArea.AdjustToContents
+                )
                 summary_layout.addWidget(self.summary_table)
 
                 self.net_label = QtWidgets.QLabel("Net Cashflow: 0.00")
+                self.net_label.setSizePolicy(
+                    QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+                )
                 summary_layout.addWidget(self.net_label)
 
                 self.figure = Figure(figsize=(5, 3))
                 self.canvas = FigureCanvas(self.figure)
+                policy = QtWidgets.QSizePolicy(
+                    QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+                )
+                self.canvas.setSizePolicy(policy)
                 summary_layout.addWidget(self.canvas)
 
                 self.stack.addWidget(summary_widget)
@@ -104,12 +118,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
                 self.admin_tabs = QtWidgets.QTabWidget()
                 admin_layout.addWidget(self.admin_tabs)
+                admin_layout.setStretchFactor(self.admin_tabs, 1)
 
                 self.mapping_table = NavigationTableWidget(0, 4)
                 self.mapping_table.setHorizontalHeaderLabels(
                     ["Keyword", "Min", "Max", "Category"]
                 )
                 self.mapping_table.horizontalHeader().setStretchLastSection(True)
+                self.mapping_table.setSizeAdjustPolicy(
+                    QtWidgets.QAbstractScrollArea.AdjustToContents
+                )
                 self.admin_tabs.addTab(self.mapping_table, "Mappings")
 
                 btn_layout = QtWidgets.QHBoxLayout()
@@ -123,6 +141,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 ):
                     btn_layout.addWidget(b)
                 admin_layout.addLayout(btn_layout)
+                admin_layout.setStretchFactor(btn_layout, 0)
 
                 self.save_mapping_btn.clicked.connect(self.save_mappings)
                 self.delete_mapping_btn.clicked.connect(self.delete_mapping)
@@ -135,11 +154,19 @@ class MainWindow(QtWidgets.QMainWindow):
                 page_layout = QtWidgets.QVBoxLayout(page)
 
                 table = NavigationTableWidget(0, 4)
+                table.setSizeAdjustPolicy(
+                    QtWidgets.QAbstractScrollArea.AdjustToContents
+                )
                 total_label = QtWidgets.QLabel("Total: 0.00")
+                total_label.setSizePolicy(
+                    QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+                )
                 manager = TransactionTableManager(table, total_label)
                 manager.set_headers(["Date", "Description", "Category", "Amount"])
                 page_layout.addWidget(table)
                 page_layout.addWidget(total_label, alignment=QtCore.Qt.AlignRight)
+                page_layout.setStretch(0, 1)
+                page_layout.setStretch(1, 0)
 
                 self.stack.addWidget(page)
                 self.tables.append(table)

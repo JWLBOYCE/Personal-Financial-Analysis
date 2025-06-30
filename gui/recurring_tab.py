@@ -20,7 +20,11 @@ class RecurringTab(QtWidgets.QWidget):
             ["Description", "Amount", "Category", "Type"]
         )
         self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.setSizeAdjustPolicy(
+            QtWidgets.QAbstractScrollArea.AdjustToContents
+        )
         layout.addWidget(self.table)
+        layout.setStretch(0, 1)
 
         btn_layout = QtWidgets.QHBoxLayout()
         self.add_btn = QtWidgets.QPushButton("Add Template")
