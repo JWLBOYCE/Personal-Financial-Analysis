@@ -49,3 +49,15 @@ CREATE TABLE IF NOT EXISTS import_logs (
     type TEXT NOT NULL
 );
 
+-- Generic entries table used by monthly data sections
+CREATE TABLE IF NOT EXISTS monthly_entries (
+    id INTEGER PRIMARY KEY,
+    month TEXT NOT NULL,
+    table_key TEXT NOT NULL,
+    date TEXT,
+    description TEXT,
+    amount REAL,
+    category TEXT,
+    notes TEXT
+);
+
