@@ -7,6 +7,7 @@ from .dashboard_tab import DashboardTab
 from .recurring_tab import RecurringTab
 from .navigation_table_widget import NavigationTableWidget
 from .table_manager import TransactionTableManager
+from .inactivity import InactivityFilter, UnlockDialog
 
 __all__ = [
     "MainWindow",
@@ -16,4 +17,6 @@ __all__ = [
     "RecurringTab",
     "NavigationTableWidget",
     "TransactionTableManager",
+    "InactivityFilter",
+    "UnlockDialog",
 ]
