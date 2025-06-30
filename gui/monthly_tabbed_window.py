@@ -27,10 +27,20 @@ class TableSection(QtWidgets.QGroupBox):
 
     def __init__(self, title: str) -> None:
         super().__init__(title)
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+        )
         layout = QtWidgets.QVBoxLayout(self)
 
         self.table = NavigationTableWidget(0, 5)
+        self.table.setSizeAdjustPolicy(
+            QtWidgets.QAbstractScrollArea.AdjustToContents
+        )
         self.total_label = QtWidgets.QLabel("Total: 0.00")
+        label_policy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+        )
+        self.total_label.setSizePolicy(label_policy)
         self.manager = TransactionTableManager(self.table, self.total_label)
         self.manager.set_headers([
             "Date",
@@ -41,6 +51,8 @@ class TableSection(QtWidgets.QGroupBox):
         ])
         layout.addWidget(self.table)
         layout.addWidget(self.total_label, alignment=QtCore.Qt.AlignRight)
+        layout.setStretch(0, 1)
+        layout.setStretch(1, 0)
 
         # Keep the summary table in sync
         self.table.cellChanged.connect(lambda *_: self.update_total())
@@ -105,6 +117,9 @@ class SummarySection(QtWidgets.QGroupBox):
 
     def __init__(self, month_name: str) -> None:
         super().__init__("Monthly Summary")
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+        )
         layout = QtWidgets.QGridLayout(self)
         self.month_name = month_name
 
@@ -117,7 +132,13 @@ class SummarySection(QtWidgets.QGroupBox):
         ]
         for i, (title, key) in enumerate(rows):
             header = QtWidgets.QLabel(title + ":")
+            header.setSizePolicy(
+                QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+            )
             value = QtWidgets.QLabel("0.00")
+            value.setSizePolicy(
+                QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+            )
             font = QtGui.QFont(value.font())
             font.setBold(True)
             value.setFont(font)
@@ -221,23 +242,38 @@ class MonthlyTab(QtWidgets.QMainWindow):
         income_section = self.sections[0]
 
         passive_group = QtWidgets.QGroupBox("Passive Income")
+        passive_group.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+        )
         passive_layout = QtWidgets.QVBoxLayout(passive_group)
         self.passive_fig = Figure(figsize=(4, 3))
         self.passive_canvas = FigureCanvas(self.passive_fig)
+        policy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+        )
+        self.passive_canvas.setSizePolicy(policy)
         passive_layout.addWidget(self.passive_canvas)
+        passive_layout.setStretch(0, 1)
 
         income_section.table.cellChanged.connect(lambda *_: self.update_passive_chart())
         income_section.table.model().rowsInserted.connect(lambda *_: self.update_passive_chart())
         income_section.table.model().rowsRemoved.connect(lambda *_: self.update_passive_chart())
 
         aa_chart_group = QtWidgets.QGroupBox("Asset Allocation Pie Charts")
+        aa_chart_group.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+        )
         aa_chart_layout = QtWidgets.QHBoxLayout(aa_chart_group)
         self.target_fig = Figure(figsize=(3, 3))
         self.target_canvas = FigureCanvas(self.target_fig)
+        self.target_canvas.setSizePolicy(policy)
         self.actual_fig = Figure(figsize=(3, 3))
         self.actual_canvas = FigureCanvas(self.actual_fig)
+        self.actual_canvas.setSizePolicy(policy)
         aa_chart_layout.addWidget(self.target_canvas)
         aa_chart_layout.addWidget(self.actual_canvas)
+        aa_chart_layout.setStretch(0, 1)
+        aa_chart_layout.setStretch(1, 1)
 
 
         self.asset_table_section = TableSection("Asset Allocation Table")

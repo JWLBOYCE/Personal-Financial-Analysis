@@ -19,10 +19,15 @@ class DashboardTab(QtWidgets.QWidget):
 
         self.pie_fig = Figure(figsize=(4, 3))
         self.pie_canvas = FigureCanvas(self.pie_fig)
+        policy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+        )
+        self.pie_canvas.setSizePolicy(policy)
         layout.addWidget(self.pie_canvas)
 
         self.bar_fig = Figure(figsize=(6, 3))
         self.bar_canvas = FigureCanvas(self.bar_fig)
+        self.bar_canvas.setSizePolicy(policy)
         layout.addWidget(self.bar_canvas)
 
     # ------------------------------------------------------------------
