@@ -1,4 +1,7 @@
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
+
+# Custom role used to store whether a row is marked as recurring
+IS_RECURRING_ROLE = QtCore.Qt.UserRole + 1
 
 
 class TableSection(QtWidgets.QGroupBox):
@@ -19,6 +22,28 @@ class TableSection(QtWidgets.QGroupBox):
         layout.addWidget(self.total_label, alignment=QtCore.Qt.AlignRight)
 
         self.table.itemChanged.connect(self.update_total)
+
+    # ------------------------------------------------------------------
+    # Recurring row helpers
+    # ------------------------------------------------------------------
+    def set_row_recurring(self, row: int, recurring: bool) -> None:
+        """Mark a row as recurring and update its font style."""
+        for col in range(self.table.columnCount()):
+            item = self.table.item(row, col)
+            if item is None:
+                continue
+            item.setData(IS_RECURRING_ROLE, recurring)
+            font = QtGui.QFont(item.font())
+            font.setItalic(recurring)
+            item.setFont(font)
+
+    def toggle_selected_recurring(self) -> None:
+        """Toggle the recurring flag for all selected rows."""
+        rows = {idx.row() for idx in self.table.selectedIndexes()}
+        for row in rows:
+            first_item = self.table.item(row, 0)
+            current = bool(first_item.data(IS_RECURRING_ROLE)) if first_item else False
+            self.set_row_recurring(row, not current)
 
     def update_total(self) -> None:
         """Recalculate the total for the Amount column."""
