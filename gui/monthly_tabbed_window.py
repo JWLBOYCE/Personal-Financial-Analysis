@@ -1,4 +1,5 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
+from .navigation_table_widget import NavigationTableWidget
 from datetime import datetime
 
 # Custom role used to store whether a row is marked as recurring
@@ -14,7 +15,7 @@ class TableSection(QtWidgets.QGroupBox):
         super().__init__(title)
         layout = QtWidgets.QVBoxLayout(self)
 
-        self.table = QtWidgets.QTableWidget(0, 5)
+        self.table = NavigationTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels(
             ["Date", "Description", "Amount", "Category", "Notes"]
         )
