@@ -1,16 +1,17 @@
 # Personal Financial Analysis
 
-This project is a desktop financial analysis tool built with PyQt and SQLite. It provides interfaces for importing statements, processing transactions and organizing financial data.
+Personal Financial Analysis is a desktop application for tracking and analysing personal finances. The project is written in Python using the PyQt5 toolkit and SQLite for data storage.
 
-## Project Structure
+## Features
 
-- `gui/` - PyQt widgets and layouts
-- `data/` - SQLite database and backups
-- `parser/` - CSV and PDF parsers
-- `logic/` - classification and transaction processing
-- `archived/` - processed statement files
-- `import_logs` table tracks archived imports
-- `main.py` - application entry point
+- Import bank statements in CSV or PDF format
+- Automatically archive imported statements and log the import history
+- Categorise transactions and mark recurring expenses or income
+- Month-by-month views with income, expense and credit card tabs
+- Summary dashboard with totals and a bar chart
+- Basic admin tools for editing keyword mappings used during categorisation
+- Simple password-protected login screen (configured via `.env`)
+
 
 ## Demo Mode
 
@@ -19,24 +20,41 @@ Set `DEMO_MODE=true` in the `.env` file to run the application using the demo
 CSV and database. If `demo/demo_finance.db` is missing the application will
 create it automatically from `demo/demo_finance.sql`.
 
-## Login
+## Installation
 
-The application starts with a simple login window. The password hash is stored
-in a local `.env` file under the variable `PASSWORD_HASH`. By default the hash
-in this repository corresponds to the password `test123`. You can update the
-hash using your preferred hashing method (e.g. SHA-256) and modifying the value
-in `.env`.
+1. Create and activate a virtual environment (optional)
+2. Install the dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Run the application:
+   ```bash
+   python main.py
+   ```
+   The first run will prompt for a password and store its hash in `.env`. The default repository value corresponds to the password `test123`.
 
-## Setup
+## Directory Layout
 
-Install the required dependencies and run the application:
-
-```bash
-pip install -r requirements.txt
-python main.py
+```
+archived/      # Archived copies of imported statements
+ data/         # SQLite database file
+ gui/          # PyQt5 UI classes
+ logic/        # Categorisation and month management helpers
+ parser/       # CSV and PDF statement parsers
+ schema.sql    # Database schema used on startup
+ main.py       # Application entry point
 ```
 
-When a CSV or PDF statement is imported, the original file is moved to the
-`archived/` directory and renamed with the import date, for example
-`statement_Starling_2023-03-01.csv`. Each archived import is recorded in the
-`import_logs` table.
+## Database Schema
+The schema defines tables for transactions, months, categories, keyword mappings and import logs. It is automatically created in `data/finance.db` on first run. See [`schema.sql`](schema.sql) for details.
+
+## Usage Notes
+
+- Imported files are moved to the `archived/` directory with the import date appended to the filename.
+- The application currently loads sample months on startup. Transaction data can be added by importing statements or by entering transactions manually.
+- Recurring transactions can be duplicated to a new month using utilities in `logic/month_manager.py`.
+
+## License
+
+This project is released under the MIT License. See the [LICENSE](LICENSE) file for more information.
+
