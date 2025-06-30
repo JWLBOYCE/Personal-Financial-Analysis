@@ -13,6 +13,8 @@ from .dashboard_tab import DashboardTab
 from .recurring_tab import RecurringTab
 from .table_manager import TransactionTableManager
 from datetime import datetime
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 
 # Custom role used to store whether a row is marked as recurring is imported
 # above as ``IS_RECURRING_ROLE``.
@@ -172,65 +174,89 @@ class SummarySection(QtWidgets.QGroupBox):
 class MonthlyTab(QtWidgets.QWidget):
     """Widget representing a single month's data."""
 
-    SECTION_TITLES = [
-        "Income Table",
-        "Expenses Table",
-        "Credit Card Transactions",
-    ]
-
     def __init__(self, month_name: str) -> None:
         super().__init__()
-        layout = QtWidgets.QVBoxLayout(self)
-
-        self.sections = []
-        for title in self.SECTION_TITLES:
-            section = TableSection(title)
-            layout.addWidget(section)
-            self.sections.append(section)
-            # Show a separator at the top by default
-            section.set_last_classified_row(-1)
-            section.table.cellChanged.connect(lambda *_: self.update_summary())
-            section.table.model().rowsInserted.connect(
-                lambda *_: self.update_summary()
-            )
-            section.table.model().rowsRemoved.connect(
-                lambda *_: self.update_summary()
-            )
-
         self.month_name = month_name
-        self.summary = SummarySection(month_name)
-        layout.addWidget(self.summary)
 
-        layout.addStretch(1)
+        main_splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        left_splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+        right_splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+        main_splitter.addWidget(left_splitter)
+        main_splitter.addWidget(right_splitter)
 
-        self.update_summary()
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(main_splitter)
 
-    # --------------------------------------------------------------
-    # Summary helpers
-    # --------------------------------------------------------------
-    def _calc_total(self, section: TableSection) -> float:
-        total = 0.0
-        for row in range(section.table.rowCount()):
-            first = section.table.item(row, 0)
-            if first and first.data(SEPARATOR_ROLE):
-                continue
-            item = section.table.item(row, 2)
-            if item is None:
-                continue
-            try:
-                total += float(item.text())
-            except (TypeError, ValueError):
-                pass
-        return total
+        # ------------------------------------------------------------------
+        # Left column widgets
+        # ------------------------------------------------------------------
+        income_section = TableSection("Income Table")
+        expenses_section = TableSection("Expenses Table")
+        self.sections = [income_section, expenses_section]
+
+        for section in self.sections:
+            section.set_last_classified_row(-1)
+        left_splitter.addWidget(income_section)
+        left_splitter.addWidget(expenses_section)
+
+        # Net worth and liabilities side by side
+        networth_section = TableSection("Net Worth")
+        liabilities_section = TableSection("Liabilities")
+        pair_splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        pair_splitter.addWidget(networth_section)
+        pair_splitter.addWidget(liabilities_section)
+        pair_group = QtWidgets.QGroupBox("Net Worth + Liabilities")
+        pair_layout = QtWidgets.QVBoxLayout(pair_group)
+        pair_layout.addWidget(pair_splitter)
+        left_splitter.addWidget(pair_group)
+
+        # ------------------------------------------------------------------
+        # Right column widgets
+        # ------------------------------------------------------------------
+        top_right = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+        right_splitter.addWidget(top_right)
+        bottom_right = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+        right_splitter.addWidget(bottom_right)
+
+        # Passive income bar chart
+        passive_group = QtWidgets.QGroupBox("Passive Income")
+        passive_layout = QtWidgets.QVBoxLayout(passive_group)
+        self.passive_fig = Figure(figsize=(4, 3))
+        self.passive_canvas = FigureCanvas(self.passive_fig)
+        passive_layout.addWidget(self.passive_canvas)
+        top_right.addWidget(passive_group)
+
+        cash_end_section = TableSection("Cash at Month End")
+        top_right.addWidget(cash_end_section)
+
+        crosscheck_section = TableSection("Cash Crosscheck")
+        top_right.addWidget(crosscheck_section)
+
+        # Asset allocation pie charts
+        aa_chart_group = QtWidgets.QGroupBox("Asset Allocation Pie Charts")
+        aa_chart_layout = QtWidgets.QHBoxLayout(aa_chart_group)
+        self.target_fig = Figure(figsize=(3, 3))
+        self.target_canvas = FigureCanvas(self.target_fig)
+        self.actual_fig = Figure(figsize=(3, 3))
+        self.actual_canvas = FigureCanvas(self.actual_fig)
+        aa_chart_layout.addWidget(self.target_canvas)
+        aa_chart_layout.addWidget(self.actual_canvas)
+        bottom_right.addWidget(aa_chart_group)
+
+        asset_table_section = TableSection("Asset Allocation Table")
+        bottom_right.addWidget(asset_table_section)
+
+        provisions_section = TableSection("Provisions Table")
+        bottom_right.addWidget(provisions_section)
+
+        cc_classifier_section = TableSection("Credit Card Classifier Table")
+        bottom_right.addWidget(cc_classifier_section)
+
+        layout.setStretchFactor(main_splitter, 1)
 
     def update_summary(self) -> None:
-        if len(self.sections) < 3:
-            return
-        income = self._calc_total(self.sections[0])
-        expenses = self._calc_total(self.sections[1])
-        credit = self._calc_total(self.sections[2])
-        net = income - expenses
-        self.summary.set_values(income, expenses, net, credit)
+        """Placeholder for compatibility."""
+        pass
 
 
 class MonthlyTabbedWindow(QtWidgets.QMainWindow):
