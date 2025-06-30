@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import csv
 import os
+import sqlite3
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
 import pandas as pd
 
 ARCHIVE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "archived")
+DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "finance.db")
 
 
 def _find_column(columns: List[str], names: List[str]) -> Optional[str]:
@@ -61,16 +63,29 @@ def parse_csv(file_path: str) -> List[Dict[str, Any]]:
             continue
         transactions.append({"date": date, "description": desc, "amount": amount})
 
-    _archive(file_path)
+    _archive(file_path, "csv")
     return transactions
 
 
-def _archive(file_path: str) -> None:
+def _archive(file_path: str, file_type: str) -> None:
     os.makedirs(ARCHIVE_DIR, exist_ok=True)
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now().strftime("%Y-%m-%d")
     base = os.path.basename(file_path)
-    archived_path = os.path.join(ARCHIVE_DIR, f"{ts}_{base}")
+    name, ext = os.path.splitext(base)
+    archived_name = f"{name}_{ts}{ext}"
+    archived_path = os.path.join(ARCHIVE_DIR, archived_name)
     os.replace(file_path, archived_path)
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS import_logs (id INTEGER PRIMARY KEY, file_name TEXT, date TEXT, type TEXT)"
+    )
+    conn.execute(
+        "INSERT INTO import_logs (file_name, date, type) VALUES (?, ?, ?)",
+        (archived_name, ts, file_type),
+    )
+    conn.commit()
+    conn.close()
 
 
 __all__ = ["parse_csv"]
