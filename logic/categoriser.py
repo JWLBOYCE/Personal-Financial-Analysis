@@ -46,22 +46,24 @@ class Categoriser:
             if category_id is not None:
                 keyword = self._prompt_keyword(description, parent)
                 if keyword:
-                    self._save_mapping(keyword, category_id)
+                    self._save_mapping(keyword, category_id, amount)
         return category_id, self._is_recurring(description, amount)
 
     def _lookup_mapping(self, desc: str, amt: float) -> Tuple[Optional[int], float]:
-        cur = self.conn.execute("SELECT id, keyword, category_id FROM mappings")
+        cur = self.conn.execute(
+            "SELECT id, keyword, category_id, min_amount, max_amount FROM mappings"
+        )
         best_id: Optional[int] = None
         best_score = 0.0
         best_row_id: Optional[int] = None
         for row in cur.fetchall():
-            score = SequenceMatcher(None, row["keyword"].lower(), desc.lower()).ratio() * 100
-            if score > best_score:
-                min_amt, max_amt = self._amount_range(row["keyword"])
-                if min_amt is None or (min_amt <= amt <= max_amt):
-                    best_score = score
-                    best_id = row["category_id"]
-                    best_row_id = row["id"]
+            score = (
+                SequenceMatcher(None, row["keyword"].lower(), desc.lower()).ratio() * 100
+            )
+            if score > best_score and row["min_amount"] <= amt <= row["max_amount"]:
+                best_score = score
+                best_id = row["category_id"]
+                best_row_id = row["id"]
         if best_id is not None and best_score >= 90:
             self.conn.execute(
                 "UPDATE mappings SET last_used = ? WHERE id = ?",
@@ -71,13 +73,6 @@ class Categoriser:
             return best_id, best_score
         return None, 0.0
 
-    def _amount_range(self, keyword: str) -> Tuple[Optional[float], Optional[float]]:
-        cur = self.conn.execute(
-            "SELECT MIN(amount), MAX(amount) FROM transactions WHERE description LIKE ?",
-            (f"%{keyword}%",),
-        )
-        result = cur.fetchone()
-        return result[0], result[1]
 
     def _prompt_user(self, desc: str, parent: Optional[QtWidgets.QWidget]) -> Optional[int]:
         text, ok = QtWidgets.QInputDialog.getText(
@@ -106,10 +101,16 @@ class Categoriser:
         )
         return keyword.strip().lower() if ok and keyword.strip() else None
 
-    def _save_mapping(self, keyword: str, category_id: int) -> None:
+    def _save_mapping(self, keyword: str, category_id: int, amount: float) -> None:
         self.conn.execute(
-            "INSERT INTO mappings (keyword, category_id, recurring_guess, last_used) VALUES (?, ?, 0, ?)",
-            (keyword, category_id, datetime.now().isoformat()),
+            "INSERT INTO mappings (keyword, min_amount, max_amount, category_id, recurring_guess, last_used) VALUES (?, ?, ?, ?, 0, ?)",
+            (
+                keyword,
+                amount * 0.95,
+                amount * 1.05,
+                category_id,
+                datetime.now().isoformat(),
+            ),
         )
         self.conn.commit()
 

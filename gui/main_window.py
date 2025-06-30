@@ -97,26 +97,30 @@ class MainWindow(QtWidgets.QMainWindow):
             elif tab == "Admin":
                 admin_widget = QtWidgets.QWidget()
                 admin_layout = QtWidgets.QVBoxLayout(admin_widget)
-                self.mapping_table = NavigationTableWidget(0, 3)
+
+                self.admin_tabs = QtWidgets.QTabWidget()
+                admin_layout.addWidget(self.admin_tabs)
+
+                self.mapping_table = NavigationTableWidget(0, 4)
                 self.mapping_table.setHorizontalHeaderLabels(
-                    ["Keyword", "Category", "Last Used"]
+                    ["Keyword", "Min", "Max", "Category"]
                 )
                 self.mapping_table.horizontalHeader().setStretchLastSection(True)
-                admin_layout.addWidget(self.mapping_table)
+                self.admin_tabs.addTab(self.mapping_table, "Mappings")
 
                 btn_layout = QtWidgets.QHBoxLayout()
-                self.edit_mapping_btn = QtWidgets.QPushButton("Edit")
+                self.save_mapping_btn = QtWidgets.QPushButton("Save")
                 self.delete_mapping_btn = QtWidgets.QPushButton("Delete")
                 self.retrain_btn = QtWidgets.QPushButton("Retrain Classifier")
                 for b in (
-                    self.edit_mapping_btn,
+                    self.save_mapping_btn,
                     self.delete_mapping_btn,
                     self.retrain_btn,
                 ):
                     btn_layout.addWidget(b)
                 admin_layout.addLayout(btn_layout)
 
-                self.edit_mapping_btn.clicked.connect(self.edit_mapping)
+                self.save_mapping_btn.clicked.connect(self.save_mappings)
                 self.delete_mapping_btn.clicked.connect(self.delete_mapping)
                 self.retrain_btn.clicked.connect(self.retrain_classifier)
 
@@ -298,7 +302,8 @@ class MainWindow(QtWidgets.QMainWindow):
         conn = self._get_conn()
         cur = conn.execute(
             """
-            SELECT m.id, m.keyword, c.name AS category, m.last_used
+            SELECT m.id, m.keyword, m.min_amount, m.max_amount,
+                   c.name AS category
             FROM mappings m LEFT JOIN categories c ON m.category_id = c.id
             ORDER BY m.keyword
             """
@@ -307,67 +312,80 @@ class MainWindow(QtWidgets.QMainWindow):
         self.mapping_table.setRowCount(0)
         for i, row in enumerate(rows):
             self.mapping_table.insertRow(i)
-            item = QtWidgets.QTableWidgetItem(row["keyword"])
-            item.setData(QtCore.Qt.UserRole, row["id"])
-            self.mapping_table.setItem(i, 0, item)
+            kw_item = QtWidgets.QTableWidgetItem(row["keyword"])
+            kw_item.setData(QtCore.Qt.UserRole, row["id"])
+            self.mapping_table.setItem(i, 0, kw_item)
             self.mapping_table.setItem(
-                i, 1, QtWidgets.QTableWidgetItem(row["category"] or "")
+                i, 1, QtWidgets.QTableWidgetItem(f"{row['min_amount']:.2f}")
             )
             self.mapping_table.setItem(
-                i, 2, QtWidgets.QTableWidgetItem(row["last_used"] or "")
+                i, 2, QtWidgets.QTableWidgetItem(f"{row['max_amount']:.2f}")
+            )
+            self.mapping_table.setItem(
+                i, 3, QtWidgets.QTableWidgetItem(row["category"] or "")
             )
         self.mapping_table.resizeColumnsToContents()
         conn.close()
 
     def delete_mapping(self) -> None:
-        row = self.mapping_table.currentRow()
-        if row < 0:
+        rows = sorted({idx.row() for idx in self.mapping_table.selectedIndexes()}, reverse=True)
+        if not rows:
             return
-        item = self.mapping_table.item(row, 0)
-        mid = item.data(QtCore.Qt.UserRole)
         conn = self._get_conn()
-        conn.execute("DELETE FROM mappings WHERE id = ?", (mid,))
+        for row in rows:
+            item = self.mapping_table.item(row, 0)
+            if item:
+                mid = item.data(QtCore.Qt.UserRole)
+                conn.execute("DELETE FROM mappings WHERE id = ?", (mid,))
+            self.mapping_table.removeRow(row)
         conn.commit()
         conn.close()
-        self.mapping_table.removeRow(row)
 
-    def edit_mapping(self) -> None:
-        row = self.mapping_table.currentRow()
-        if row < 0:
-            return
-        item_keyword = self.mapping_table.item(row, 0)
-        item_category = self.mapping_table.item(row, 1)
-        keyword, ok = QtWidgets.QInputDialog.getText(
-            self, "Edit Keyword", "Keyword:", text=item_keyword.text()
-        )
-        if not ok or not keyword.strip():
-            return
-        category, ok = QtWidgets.QInputDialog.getText(
-            self, "Edit Category", "Category:", text=item_category.text()
-        )
-        if not ok or not category.strip():
-            return
+    def save_mappings(self) -> None:
         conn = self._get_conn()
-        cur = conn.execute(
-            "SELECT id FROM categories WHERE name = ?", (category.strip(),)
-        )
-        cat_row = cur.fetchone()
-        if cat_row:
-            cat_id = cat_row["id"]
-        else:
-            cur = conn.execute(
-                "INSERT INTO categories (name, type) VALUES (?, 'expense')",
-                (category.strip(),),
-            )
-            cat_id = cur.lastrowid
-        mid = item_keyword.data(QtCore.Qt.UserRole)
-        conn.execute(
-            "UPDATE mappings SET keyword = ?, category_id = ? WHERE id = ?",
-            (keyword.strip(), cat_id, mid),
-        )
+        for row in range(self.mapping_table.rowCount()):
+            kw_item = self.mapping_table.item(row, 0)
+            min_item = self.mapping_table.item(row, 1)
+            max_item = self.mapping_table.item(row, 2)
+            cat_item = self.mapping_table.item(row, 3)
+            if kw_item is None or cat_item is None:
+                continue
+            keyword = kw_item.text().strip()
+            try:
+                min_amt = float(min_item.text()) if min_item else 0.0
+            except ValueError:
+                min_amt = 0.0
+            try:
+                max_amt = float(max_item.text()) if max_item else 0.0
+            except ValueError:
+                max_amt = 0.0
+            category = cat_item.text().strip()
+            cat_id = None
+            if category:
+                cur = conn.execute("SELECT id FROM categories WHERE name = ?", (category,))
+                row_cat = cur.fetchone()
+                if row_cat:
+                    cat_id = row_cat["id"]
+                else:
+                    cur = conn.execute(
+                        "INSERT INTO categories (name, type) VALUES (?, 'expense')",
+                        (category,),
+                    )
+                    cat_id = cur.lastrowid
+            mid = kw_item.data(QtCore.Qt.UserRole)
+            if mid is None:
+                cur = conn.execute(
+                    "INSERT INTO mappings (keyword, min_amount, max_amount, category_id) VALUES (?, ?, ?, ?)",
+                    (keyword, min_amt, max_amt, cat_id),
+                )
+                kw_item.setData(QtCore.Qt.UserRole, cur.lastrowid)
+            else:
+                conn.execute(
+                    "UPDATE mappings SET keyword = ?, min_amount = ?, max_amount = ?, category_id = ? WHERE id = ?",
+                    (keyword, min_amt, max_amt, cat_id, mid),
+                )
         conn.commit()
         conn.close()
-        self.load_mappings()
 
     def toggle_recurring(self) -> None:
         """Toggle recurring flag for selected rows in the current table."""
