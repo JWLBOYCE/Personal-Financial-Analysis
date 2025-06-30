@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Iterable, Sequence, Any, Optional
 from PyQt5 import QtWidgets, QtGui, QtCore
 
+from .delegates import AmountDelegate, DateDelegate, CategoryDelegate
+
 from .navigation_table_widget import (
     NavigationTableWidget,
     IS_RECURRING_ROLE,
@@ -17,6 +19,7 @@ class TransactionTableManager:
     def __init__(self, table: NavigationTableWidget, total_label: QtWidgets.QLabel | None = None) -> None:
         self.table = table
         self.total_label = total_label
+        self._delegates: list[QtWidgets.QStyledItemDelegate] = []
 
         if self.total_label is not None:
             self.table.cellChanged.connect(lambda _r, _c: self.update_total())
@@ -32,6 +35,19 @@ class TransactionTableManager:
         self.table.setColumnCount(len(headers))
         self.table.setHorizontalHeaderLabels(list(headers))
         self.table.horizontalHeader().setStretchLastSection(True)
+        self._delegates.clear()
+        for i, h in enumerate(headers):
+            name = h.strip().lower()
+            delegate: QtWidgets.QStyledItemDelegate | None = None
+            if name == "amount":
+                delegate = AmountDelegate(self.table)
+            elif name == "date":
+                delegate = DateDelegate(self.table)
+            elif name == "category":
+                delegate = CategoryDelegate(self.table)
+            if delegate is not None:
+                self.table.setItemDelegateForColumn(i, delegate)
+                self._delegates.append(delegate)
 
     def add_row(self, row_data: Sequence[Any], *, recurring: bool = False) -> int:
         row = self.table.rowCount()

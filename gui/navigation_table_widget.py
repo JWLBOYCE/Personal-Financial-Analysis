@@ -51,6 +51,7 @@ class NavigationTableWidget(QtWidgets.QTableWidget):
                         c += 1
                         continue
                     self.setCurrentCell(r, c)
+                    self.editItem(self.currentItem())
                     event.accept()
                     return
                 r += 1
