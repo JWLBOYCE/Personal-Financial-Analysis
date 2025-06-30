@@ -9,8 +9,6 @@ from .navigation_table_widget import (
     CATEGORY_METHOD_ROLE,
     IS_RECURRING_ROLE,
 )
-from .dashboard_tab import DashboardTab
-from .recurring_tab import RecurringTab
 from .table_manager import TransactionTableManager
 from datetime import datetime
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -506,18 +504,39 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         toolbar.addAction(new_month_action)
         new_month_action.triggered.connect(self.add_new_month)
 
-        self.dashboard = DashboardTab()
-        self.tabs.addTab(self.dashboard, "Dashboard")
+        # ------------------------------------------------------------------
+        # Static top-level tabs
+        # ------------------------------------------------------------------
+        def placeholder(title: str) -> QtWidgets.QWidget:
+            widget = QtWidgets.QWidget()
+            layout = QtWidgets.QVBoxLayout(widget)
+            lbl = QtWidgets.QLabel(f"{title} content goes here")
+            lbl.setAlignment(QtCore.Qt.AlignCenter)
+            layout.addWidget(lbl)
+            return widget
 
-        self.recurring = RecurringTab()
-        self.tabs.addTab(self.recurring, "Recurring Transactions")
+        current = self._wrap_month_tab(MonthlyTab(months[0])) if months else QtWidgets.QWidget()
+        self.tabs.addTab(current, "Current Month")
+
+        last = (
+            self._wrap_month_tab(MonthlyTab(months[1]))
+            if len(months) > 1
+            else QtWidgets.QWidget()
+        )
+        self.tabs.addTab(last, "Last Month")
+
+        self.tabs.addTab(placeholder("Credit Card Analysis"), "Credit Card Analysis")
+        self.tabs.addTab(placeholder("Income Statement Tracker"), "Income Statement Tracker")
+        self.tabs.addTab(placeholder("Balance Sheet Tracker"), "Balance Sheet Tracker")
+        self.tabs.addTab(placeholder("Cashflow Statement"), "Cashflow Statement")
+        self.tabs.addTab(placeholder("Monthly Analysis"), "Monthly Analysis")
+        self.tabs.addTab(placeholder("Forecast"), "Forecast")
 
         for month in months:
             tab = MonthlyTab(month)
             wrapper = self._wrap_month_tab(tab)
             self.month_stack.addWidget(wrapper)
 
-        self.tabs.currentChanged.connect(self._tab_changed)
         self.month_stack.setCurrentIndex(0)
 
     def _wrap_month_tab(self, tab: QtWidgets.QWidget) -> QtWidgets.QScrollArea:
@@ -552,7 +571,6 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         if 0 <= row < self.month_stack.count():
             self.month_stack.setCurrentIndex(row)
             self.current_month = self.month_list.item(row).text()
-            self.dashboard.update_dashboard(self.current_month)
 
     def add_new_month(self) -> None:
         """Create a new tab based on the most recent month's data."""
@@ -617,15 +635,9 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         self.month_stack.setCurrentIndex(new_index)
         self.month_list.setCurrentRow(new_index)
         self.current_month = name.strip()
-        self.dashboard.update_dashboard(self.current_month)
 
 
-    def _tab_changed(self, index: int) -> None:
-        widget = self.tabs.widget(index)
-        if widget is self.dashboard:
-            self.dashboard.update_dashboard(self.current_month)
-        elif widget is self.recurring:
-            self.recurring.load_data()
+
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:  # type: ignore[override]
         for i in range(self.month_stack.count()):
@@ -642,5 +654,4 @@ __all__ = [
     "TableSection",
     "DataTableSection",
     "SummarySection",
-    "RecurringTab",
 ]
