@@ -1,4 +1,5 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
+from .navigation_table_widget import NavigationTableWidget
 
 # Custom role used to store whether a transaction is recurring
 IS_RECURRING_ROLE = QtCore.Qt.UserRole + 1
@@ -73,7 +74,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if tab == "Summary":
                 summary_widget = QtWidgets.QWidget()
                 summary_layout = QtWidgets.QVBoxLayout(summary_widget)
-                self.summary_table = QtWidgets.QTableWidget(0, 3)
+                self.summary_table = NavigationTableWidget(0, 3)
                 self.summary_table.setHorizontalHeaderLabels(
                     ["Category", "Income", "Expense"]
                 )
@@ -92,7 +93,7 @@ class MainWindow(QtWidgets.QMainWindow):
             elif tab == "Admin":
                 admin_widget = QtWidgets.QWidget()
                 admin_layout = QtWidgets.QVBoxLayout(admin_widget)
-                self.mapping_table = QtWidgets.QTableWidget(0, 3)
+                self.mapping_table = NavigationTableWidget(0, 3)
                 self.mapping_table.setHorizontalHeaderLabels(
                     ["Keyword", "Category", "Last Used"]
                 )
@@ -121,7 +122,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 page = QtWidgets.QWidget()
                 page_layout = QtWidgets.QVBoxLayout(page)
 
-                table = QtWidgets.QTableWidget(0, 4)
+                table = NavigationTableWidget(0, 4)
                 table.setHorizontalHeaderLabels(
                     ["Date", "Description", "Category", "Amount"]
                 )
