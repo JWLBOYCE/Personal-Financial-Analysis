@@ -1,0 +1,134 @@
+from __future__ import annotations
+
+"""Parser for CSV files exported from Apple Numbers."""
+
+from typing import Dict, List, Any, Tuple, Iterable
+import pandas as pd
+from PyQt5 import QtWidgets, QtGui, QtCore
+
+# Custom role used to mark recurring entries in a table
+IS_RECURRING_ROLE = QtCore.Qt.UserRole + 1
+
+
+def _infer_type(series: Iterable[Any]) -> str:
+    """Infer a column's data type as 'float', 'date', or 'str'."""
+    s = pd.Series(list(series)).dropna()
+    if s.empty:
+        return "str"
+    if pd.api.types.is_numeric_dtype(s):
+        return "float"
+    try:
+        pd.to_datetime(s, errors="raise")
+        return "date"
+    except Exception:
+        return "str"
+
+
+def parse_numbers_csv(file_path: str) -> Dict[str, Any]:
+    """Parse a Numbers-exported CSV and infer structure and metadata."""
+    df = pd.read_csv(file_path)
+    headers = [h.strip() for h in df.columns]
+
+    column_types = {h: _infer_type(df[h]) for h in headers}
+
+    section_col = None
+    for name in headers:
+        lowered = name.lower()
+        if lowered in {"section", "type", "category"} or "section" in lowered:
+            section_col = name
+            break
+
+    tag_col = None
+    for name in headers:
+        lowered = name.lower()
+        if "tag" in lowered or "note" in lowered or "comment" in lowered:
+            tag_col = name
+            break
+
+    sections: Dict[str, List[Tuple[int, Dict[str, Any]]]] = {}
+    recurring_rows: set[int] = set()
+
+    for idx, row in df.iterrows():
+        section = str(row[section_col]).strip() if section_col else "Data"
+        row_dict = {
+            h: row[h] for h in headers if h != section_col
+        }
+        sections.setdefault(section or "Data", []).append((idx, row_dict))
+        if tag_col:
+            note = str(row[tag_col]).lower()
+            if "recurring" in note or "#recurring" in note:
+                recurring_rows.add(idx)
+
+    headers_no_section = [h for h in headers if h != section_col]
+
+    return {
+        "headers": headers_no_section,
+        "column_types": column_types,
+        "sections": sections,
+        "recurring_rows": recurring_rows,
+    }
+
+
+def create_numbers_layout(data: Dict[str, Any]) -> QtWidgets.QTabWidget:
+    """Create a PyQt tab widget matching the parsed Numbers data."""
+    headers: List[str] = data["headers"]
+    recurring_rows: set[int] = set(data.get("recurring_rows", set()))
+    widget = QtWidgets.QTabWidget()
+
+    for section, rows in data["sections"].items():
+        page = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(page)
+        table = QtWidgets.QTableWidget(0, len(headers))
+        table.setHorizontalHeaderLabels(headers)
+        layout.addWidget(table)
+        total_label = QtWidgets.QLabel("Total: 0.00")
+        layout.addWidget(total_label, alignment=QtCore.Qt.AlignRight)
+        widget.addTab(page, section)
+
+        for idx, row in rows:
+            r = table.rowCount()
+            table.insertRow(r)
+            for c, h in enumerate(headers):
+                item = QtWidgets.QTableWidgetItem(str(row.get(h, "")))
+                if _is_recurring(idx, recurring_rows):
+                    item.setData(IS_RECURRING_ROLE, True)
+                    font = QtGui.QFont(item.font())
+                    font.setItalic(True)
+                    item.setFont(font)
+                table.setItem(r, c, item)
+
+        table.itemChanged.connect(
+            lambda _item, tbl=table, lbl=total_label: _update_total(tbl, lbl)
+        )
+        _update_total(table, total_label)
+
+    return widget
+
+
+def _is_recurring(index: int, recurring_rows: set[int]) -> bool:
+    return index in recurring_rows
+
+
+def _update_total(table: QtWidgets.QTableWidget, label: QtWidgets.QLabel) -> None:
+    total = 0.0
+    amount_col = None
+    for i in range(table.columnCount()):
+        header = table.horizontalHeaderItem(i)
+        if header and header.text().lower() == "amount":
+            amount_col = i
+            break
+    if amount_col is None:
+        label.setText("Total: 0.00")
+        return
+    for row in range(table.rowCount()):
+        item = table.item(row, amount_col)
+        if item is None:
+            continue
+        try:
+            total += float(item.text())
+        except ValueError:
+            pass
+    label.setText(f"Total: {total:.2f}")
+
+
+__all__ = ["parse_numbers_csv", "create_numbers_layout", "IS_RECURRING_ROLE"]
