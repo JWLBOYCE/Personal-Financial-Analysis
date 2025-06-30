@@ -2,13 +2,13 @@
 
 from PyQt5 import QtWidgets
 
-from gui import MainWindow
+from gui import LoginWindow
 
 
 def main():
     app = QtWidgets.QApplication([])
-    window = MainWindow()
-    window.show()
+    login = LoginWindow()
+    login.show()
     app.exec_()
 
 
