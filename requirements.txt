@@ -4,3 +4,4 @@ pdfplumber
 sqlite3
 openai
 python-dotenv
+matplotlib
