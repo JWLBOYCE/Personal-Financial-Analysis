@@ -4,6 +4,7 @@ from .navigation_table_widget import (
     ORIGINAL_DESC_ROLE,
     CATEGORY_METHOD_ROLE,
 )
+from .table_manager import TransactionTableManager
 
 # Custom role used to store whether a transaction is recurring
 IS_RECURRING_ROLE = QtCore.Qt.UserRole + 1
@@ -74,6 +75,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.tables = []  # transaction tables for Income/Expenses/Credit Card
         self.total_labels = []  # labels showing total amounts for each table
+        self.table_managers = []
         for tab in self.tabs:
             if tab == "Summary":
                 summary_widget = QtWidgets.QWidget()
@@ -131,30 +133,21 @@ class MainWindow(QtWidgets.QMainWindow):
                 page_layout = QtWidgets.QVBoxLayout(page)
 
                 table = NavigationTableWidget(0, 4)
-                table.setHorizontalHeaderLabels(
-                    ["Date", "Description", "Category", "Amount"]
-                )
-                table.horizontalHeader().setStretchLastSection(True)
-                page_layout.addWidget(table)
-
                 total_label = QtWidgets.QLabel("Total: 0.00")
+                manager = TransactionTableManager(table, total_label)
+                manager.set_headers(["Date", "Description", "Category", "Amount"])
+                page_layout.addWidget(table)
                 page_layout.addWidget(total_label, alignment=QtCore.Qt.AlignRight)
 
                 self.stack.addWidget(page)
                 self.tables.append(table)
                 self.total_labels.append(total_label)
+                self.table_managers.append(manager)
 
-                # Keep totals up to date as the table changes
-                table.cellChanged.connect(
-                    lambda _r, _c, tbl=table: self._update_table_total(tbl)
-                )
+                table.cellChanged.connect(lambda *_: self._update_table_total(table))
                 model = table.model()
-                model.rowsInserted.connect(
-                    lambda *_args, tbl=table: self._update_table_total(tbl)
-                )
-                model.rowsRemoved.connect(
-                    lambda *_args, tbl=table: self._update_table_total(tbl)
-                )
+                model.rowsInserted.connect(lambda *_: self._update_table_total(table))
+                model.rowsRemoved.connect(lambda *_: self._update_table_total(table))
 
         # Bottom action buttons
         button_widget = QtWidgets.QWidget()
@@ -184,33 +177,17 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def load_dummy_data(self, month: str):
         """Populate tables with dummy transaction data."""
-        for table in self.tables:
+        for table, manager in zip(self.tables, self.table_managers):
             table.setRowCount(0)
             for i in range(5):
-                table.insertRow(i)
-                date_item = QtWidgets.QTableWidgetItem(f"2023-01-{i+1:02d}")
-                desc_item = QtWidgets.QTableWidgetItem(
-                    f"{month} transaction {i+1}"
-                )
-                desc_item.setData(ORIGINAL_DESC_ROLE, desc_item.text())
-                cat_item = QtWidgets.QTableWidgetItem("Misc")
-                cat_item.setData(CATEGORY_METHOD_ROLE, "manual")
-                amt_item = QtWidgets.QTableWidgetItem(f"{(i+1)*10:.2f}")
-                # Mark the first row as recurring for demo purposes
-                is_recurring = i == 0
-                for item in (date_item, desc_item, cat_item, amt_item):
-                    item.setData(IS_RECURRING_ROLE, is_recurring)
-                    if is_recurring:
-                        font = QtGui.QFont(item.font())
-                        font.setItalic(True)
-                        item.setFont(font)
-                for col, item in enumerate(
-                    [date_item, desc_item, cat_item, amt_item]
-                ):
-                    table.setItem(i, col, item)
-                table.update_row_tooltip(i)
-
-            self._update_table_total(table, update_summary=False)
+                values = [
+                    f"2023-01-{i+1:02d}",
+                    f"{month} transaction {i+1}",
+                    "Misc",
+                    f"{(i+1)*10:.2f}",
+                ]
+                manager.add_row(values, recurring=(i == 0))
+            manager.update_total()
 
         self._update_summary()
 
@@ -225,17 +202,8 @@ class MainWindow(QtWidgets.QMainWindow):
             index = self.tables.index(table)
         except ValueError:
             return
-        label = self.total_labels[index]
-        total = 0.0
-        for row in range(table.rowCount()):
-            item = table.item(row, 3)
-            if item is None:
-                continue
-            try:
-                total += float(item.text())
-            except (TypeError, ValueError):
-                pass
-        label.setText(f"Total: {total:.2f}")
+        manager = self.table_managers[index]
+        manager.update_total()
         if update_summary:
             self._update_summary()
 
@@ -393,19 +361,12 @@ class MainWindow(QtWidgets.QMainWindow):
         if index >= len(self.tables):
             return
         table = self.tables[index]
+        manager = self.table_managers[index]
         rows = {idx.row() for idx in table.selectedIndexes()}
         for row in rows:
             first_item = table.item(row, 0)
             current = bool(first_item.data(IS_RECURRING_ROLE)) if first_item else False
-            for col in range(table.columnCount()):
-                item = table.item(row, col)
-                if item is None:
-                    continue
-                item.setData(IS_RECURRING_ROLE, not current)
-                font = QtGui.QFont(item.font())
-                font.setItalic(not current)
-                item.setFont(font)
-            table.update_row_tooltip(row)
+            manager.apply_recurring_format(row, not current)
 
     def retrain_classifier(self) -> None:
         reply = QtWidgets.QMessageBox.question(
