@@ -9,6 +9,19 @@ CATEGORY_METHOD_ROLE = QtCore.Qt.UserRole + 11
 class NavigationTableWidget(QtWidgets.QTableWidget):
     """QTableWidget with simple keyboard navigation helpers."""
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        # Enable alternating row colors programmatically
+        self.setAlternatingRowColors(True)
+        palette = self.palette()
+        palette.setBrush(
+            QtGui.QPalette.Base, QtGui.QBrush(QtGui.QColor("#ffffff"))
+        )
+        palette.setBrush(
+            QtGui.QPalette.AlternateBase, QtGui.QBrush(QtGui.QColor("#f2f2f2"))
+        )
+        self.setPalette(palette)
+
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:  # type: ignore[name-defined]
         key = event.key()
         row = self.currentRow()
