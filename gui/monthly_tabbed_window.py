@@ -1,4 +1,5 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
+from datetime import datetime
 
 # Custom role used to store whether a row is marked as recurring
 IS_RECURRING_ROLE = QtCore.Qt.UserRole + 1
@@ -203,9 +204,60 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         self.tabs = QtWidgets.QTabWidget()
         self.setCentralWidget(self.tabs)
 
+        toolbar = self.addToolBar("Main")
+        new_month_action = QtWidgets.QAction("New Month", self)
+        toolbar.addAction(new_month_action)
+        new_month_action.triggered.connect(self.add_new_month)
+
         for month in months:
             tab = MonthlyTab(month)
             self.tabs.addTab(tab, month)
+
+    def add_new_month(self) -> None:
+        """Create a new tab based on the most recent month's data."""
+        suggested = datetime.now().strftime("%B %Y")
+        name, ok = QtWidgets.QInputDialog.getText(
+            self, "New Month", "Month name:", text=suggested
+        )
+        if not ok or not name.strip():
+            return
+
+        if self.tabs.count() == 0:
+            tab = MonthlyTab(name.strip())
+            self.tabs.addTab(tab, name.strip())
+            self.tabs.setCurrentIndex(self.tabs.count() - 1)
+            return
+
+        last_tab = self.tabs.widget(self.tabs.count() - 1)
+        new_tab = MonthlyTab(name.strip())
+
+        for idx, section in enumerate(last_tab.sections):
+            src_table = section.table
+            dst_section = new_tab.sections[idx]
+            for row in range(src_table.rowCount()):
+                first = src_table.item(row, 0)
+                if not first or first.data(SEPARATOR_ROLE):
+                    continue
+                if not first.data(IS_RECURRING_ROLE):
+                    continue
+                dest_row = dst_section.table.rowCount()
+                dst_section.table.insertRow(dest_row)
+                for col in range(src_table.columnCount()):
+                    src_item = src_table.item(row, col)
+                    text = src_item.text() if src_item else ""
+                    item = QtWidgets.QTableWidgetItem(text)
+                    item.setData(IS_RECURRING_ROLE, True)
+                    font = QtGui.QFont(item.font())
+                    font.setItalic(True)
+                    item.setFont(font)
+                    dst_section.table.setItem(dest_row, col, item)
+            dst_section.set_last_classified_row(-1)
+            dst_section.update_total()
+
+        new_tab.update_summary()
+
+        self.tabs.addTab(new_tab, name.strip())
+        self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
 
 __all__ = ["MonthlyTabbedWindow", "MonthlyTab", "TableSection", "SummarySection"]
