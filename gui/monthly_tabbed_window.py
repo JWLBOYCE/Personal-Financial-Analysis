@@ -256,6 +256,8 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
             layout.addWidget(banner)
 
         self.tabs = QtWidgets.QTabWidget()
+        # Tab labels in dark text for high contrast
+        self.tabs.tabBar().setStyleSheet("QTabBar::tab{color:#111;}")
         layout.addWidget(self.tabs)
         self.setCentralWidget(main_widget)
 

@@ -1,4 +1,4 @@
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtGui
 import hashlib
 from dotenv import dotenv_values
 
@@ -27,6 +27,15 @@ class LoginWindow(QtWidgets.QWidget):
         self.password_edit = QtWidgets.QLineEdit()
         self.password_edit.setEchoMode(QtWidgets.QLineEdit.Password)
         self.password_edit.setPlaceholderText("Enter password")
+        # Ensure password text and placeholder use dark text on light background
+        self.password_edit.setStyleSheet(
+            "color: #111; background-color: white;"
+        )
+        pal = self.password_edit.palette()
+        pal.setColor(QtGui.QPalette.Text, QtGui.QColor("#111"))
+        pal.setColor(QtGui.QPalette.Base, QtGui.QColor("white"))
+        pal.setColor(QtGui.QPalette.PlaceholderText, QtGui.QColor("#111"))
+        self.password_edit.setPalette(pal)
         layout.addWidget(self.password_edit)
 
         self.login_btn = QtWidgets.QPushButton("Login")
