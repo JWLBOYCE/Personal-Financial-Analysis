@@ -171,68 +171,50 @@ class SummarySection(QtWidgets.QGroupBox):
         )
 
 
-class MonthlyTab(QtWidgets.QWidget):
-    """Widget representing a single month's data."""
+class MonthlyTab(QtWidgets.QMainWindow):
+    """Dockable monthly view with movable panels."""
 
     def __init__(self, month_name: str) -> None:
         super().__init__()
         self.month_name = month_name
+        self.setObjectName(f"MonthlyTab_{month_name}")
+        self.setDockOptions(
+            QtWidgets.QMainWindow.AllowNestedDocks
+            | QtWidgets.QMainWindow.AnimatedDocks
+        )
+        central = QtWidgets.QWidget()
+        self.setCentralWidget(central)
 
-        main_splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
-        left_splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-        right_splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-        main_splitter.addWidget(left_splitter)
-        main_splitter.addWidget(right_splitter)
+        def make_dock(title: str, widget: QtWidgets.QWidget, area: QtCore.Qt.DockWidgetArea) -> QtWidgets.QDockWidget:
+            dock = QtWidgets.QDockWidget(title, self)
+            dock.setObjectName(title.replace(" ", "") + "Dock")
+            dock.setWidget(widget)
+            dock.setAllowedAreas(QtCore.Qt.AllDockWidgetAreas)
+            dock.setFeatures(
+                QtWidgets.QDockWidget.DockWidgetMovable
+                | QtWidgets.QDockWidget.DockWidgetFloatable
+            )
+            self.addDockWidget(area, dock)
+            return dock
 
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(main_splitter)
-
-        # ------------------------------------------------------------------
-        # Left column widgets
-        # ------------------------------------------------------------------
         income_section = TableSection("Income Table")
         expenses_section = TableSection("Expenses Table")
         self.sections = [income_section, expenses_section]
-
         for section in self.sections:
             section.set_last_classified_row(-1)
-        left_splitter.addWidget(income_section)
-        left_splitter.addWidget(expenses_section)
 
-        # Net worth and liabilities side by side
         networth_section = TableSection("Net Worth")
         liabilities_section = TableSection("Liabilities")
-        pair_splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
-        pair_splitter.addWidget(networth_section)
-        pair_splitter.addWidget(liabilities_section)
-        pair_group = QtWidgets.QGroupBox("Net Worth + Liabilities")
-        pair_layout = QtWidgets.QVBoxLayout(pair_group)
-        pair_layout.addWidget(pair_splitter)
-        left_splitter.addWidget(pair_group)
 
-        # ------------------------------------------------------------------
-        # Right column widgets
-        # ------------------------------------------------------------------
-        top_right = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-        right_splitter.addWidget(top_right)
-        bottom_right = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-        right_splitter.addWidget(bottom_right)
-
-        # Passive income bar chart
         passive_group = QtWidgets.QGroupBox("Passive Income")
         passive_layout = QtWidgets.QVBoxLayout(passive_group)
         self.passive_fig = Figure(figsize=(4, 3))
         self.passive_canvas = FigureCanvas(self.passive_fig)
         passive_layout.addWidget(self.passive_canvas)
-        top_right.addWidget(passive_group)
 
         cash_end_section = TableSection("Cash at Month End")
-        top_right.addWidget(cash_end_section)
-
         crosscheck_section = TableSection("Cash Crosscheck")
-        top_right.addWidget(crosscheck_section)
 
-        # Asset allocation pie charts
         aa_chart_group = QtWidgets.QGroupBox("Asset Allocation Pie Charts")
         aa_chart_layout = QtWidgets.QHBoxLayout(aa_chart_group)
         self.target_fig = Figure(figsize=(3, 3))
@@ -241,18 +223,48 @@ class MonthlyTab(QtWidgets.QWidget):
         self.actual_canvas = FigureCanvas(self.actual_fig)
         aa_chart_layout.addWidget(self.target_canvas)
         aa_chart_layout.addWidget(self.actual_canvas)
-        bottom_right.addWidget(aa_chart_group)
 
         asset_table_section = TableSection("Asset Allocation Table")
-        bottom_right.addWidget(asset_table_section)
-
         provisions_section = TableSection("Provisions Table")
-        bottom_right.addWidget(provisions_section)
-
         cc_classifier_section = TableSection("Credit Card Classifier Table")
-        bottom_right.addWidget(cc_classifier_section)
 
-        layout.setStretchFactor(main_splitter, 1)
+        make_dock("Income", income_section, QtCore.Qt.LeftDockWidgetArea)
+        make_dock("Expenses", expenses_section, QtCore.Qt.LeftDockWidgetArea)
+        make_dock("Net Worth", networth_section, QtCore.Qt.LeftDockWidgetArea)
+        make_dock("Liabilities", liabilities_section, QtCore.Qt.LeftDockWidgetArea)
+        make_dock("Passive Income", passive_group, QtCore.Qt.RightDockWidgetArea)
+        make_dock("Cash End", cash_end_section, QtCore.Qt.RightDockWidgetArea)
+        make_dock("Cash Crosscheck", crosscheck_section, QtCore.Qt.RightDockWidgetArea)
+        make_dock("Asset Allocation Charts", aa_chart_group, QtCore.Qt.RightDockWidgetArea)
+        make_dock("Asset Allocation Table", asset_table_section, QtCore.Qt.RightDockWidgetArea)
+        make_dock("Provisions Table", provisions_section, QtCore.Qt.RightDockWidgetArea)
+        make_dock("Credit Card Classifier", cc_classifier_section, QtCore.Qt.RightDockWidgetArea)
+
+        self._load_layout()
+
+    def _load_layout(self) -> None:
+        """Restore dock layout from settings."""
+        settings = QtCore.QSettings("PFA", "DockLayout")
+        settings.beginGroup(self.objectName())
+        geom = settings.value("geometry")
+        state = settings.value("state")
+        if isinstance(geom, QtCore.QByteArray):
+            self.restoreGeometry(geom)
+        if isinstance(state, QtCore.QByteArray):
+            self.restoreState(state)
+        settings.endGroup()
+
+    def save_layout(self) -> None:
+        """Persist the current dock layout."""
+        settings = QtCore.QSettings("PFA", "DockLayout")
+        settings.beginGroup(self.objectName())
+        settings.setValue("geometry", self.saveGeometry())
+        settings.setValue("state", self.saveState())
+        settings.endGroup()
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:  # type: ignore[override]
+        self.save_layout()
+        super().closeEvent(event)
 
     def update_summary(self) -> None:
         """Placeholder for compatibility."""
@@ -405,6 +417,13 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
                 self.month_list.blockSignals(True)
                 self.month_list.setCurrentRow(row)
                 self.month_list.blockSignals(False)
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:  # type: ignore[override]
+        for i in range(self.month_tab_offset, self.tabs.count()):
+            widget = self.tabs.widget(i)
+            if hasattr(widget, "save_layout"):
+                widget.save_layout()
+        super().closeEvent(event)
 
 
 __all__ = [
