@@ -1,6 +1,7 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
 from .navigation_table_widget import NavigationTableWidget
 from .dashboard_tab import DashboardTab
+from .recurring_tab import RecurringTab
 from .navigation_table_widget import (
     NavigationTableWidget,
     ORIGINAL_DESC_ROLE,
@@ -234,6 +235,9 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         self.dashboard = DashboardTab()
         self.tabs.addTab(self.dashboard, "Dashboard")
 
+        self.recurring = RecurringTab()
+        self.tabs.addTab(self.recurring, "Recurring Transactions")
+
         for month in months:
             tab = MonthlyTab(month)
             self.tabs.addTab(tab, month)
@@ -302,10 +306,19 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
 
 
     def _tab_changed(self, index: int) -> None:
-        if index == 0:
+        widget = self.tabs.widget(index)
+        if widget is self.dashboard:
             self.dashboard.update_dashboard(self.current_month)
+        elif widget is self.recurring:
+            self.recurring.load_data()
         else:
             self.current_month = self.tabs.tabText(index)
 
 
-__all__ = ["MonthlyTabbedWindow", "MonthlyTab", "TableSection", "SummarySection"]
+__all__ = [
+    "MonthlyTabbedWindow",
+    "MonthlyTab",
+    "TableSection",
+    "SummarySection",
+    "RecurringTab",
+]
