@@ -239,6 +239,22 @@ class MonthlyTab(QtWidgets.QMainWindow):
         aa_chart_layout.addWidget(self.target_canvas)
         aa_chart_layout.addWidget(self.actual_canvas)
 
+
+        self.asset_table_section = TableSection("Asset Allocation Table")
+        self.asset_table_section.manager.set_headers([
+            "Asset Class",
+            "Target",
+            "Actual",
+        ])
+        table = self.asset_table_section.table
+        table.cellChanged.connect(lambda *_: self.update_asset_charts())
+        table.model().rowsInserted.connect(lambda *_: self.update_asset_charts())
+        table.model().rowsRemoved.connect(lambda *_: self.update_asset_charts())
+        self.update_asset_charts()
+
+        provisions_section = TableSection("Provisions Table")
+        cc_classifier_section = TableSection("Credit Card Classifier Table")
+
         dock_map = {
             "Income Table": QtCore.Qt.LeftDockWidgetArea,
             "Expenses Table": QtCore.Qt.LeftDockWidgetArea,
@@ -253,12 +269,12 @@ class MonthlyTab(QtWidgets.QMainWindow):
             "Asset Allocation Table": QtCore.Qt.RightDockWidgetArea,
         }
 
+
         make_dock("Passive Income", passive_group, QtCore.Qt.RightDockWidgetArea)
         make_dock("Asset Allocation Charts", aa_chart_group, QtCore.Qt.RightDockWidgetArea)
-
-        for section in self.sections:
-            area = dock_map.get(section.title(), QtCore.Qt.RightDockWidgetArea)
-            make_dock(section.title().replace("Table", "").strip(), section, area)
+        make_dock("Asset Allocation Table", self.asset_table_section, QtCore.Qt.RightDockWidgetArea)
+        make_dock("Provisions Table", provisions_section, QtCore.Qt.RightDockWidgetArea)
+        make_dock("Credit Card Classifier", cc_classifier_section, QtCore.Qt.RightDockWidgetArea)
 
         self._load_layout()
 
@@ -336,6 +352,62 @@ class MonthlyTab(QtWidgets.QMainWindow):
         ax.set_title("Passive Income Sources")
         self.passive_fig.tight_layout()
         self.passive_canvas.draw()
+
+    def _gather_asset_allocation(self) -> tuple[dict[str, float], dict[str, float]]:
+        table = self.asset_table_section.table
+        headers = {
+            table.horizontalHeaderItem(i).text().strip().lower(): i
+            for i in range(table.columnCount())
+        }
+        asset_col = headers.get("asset class") or headers.get("asset")
+        target_col = headers.get("target")
+        actual_col = headers.get("actual")
+        if asset_col is None or target_col is None or actual_col is None:
+            return {}, {}
+
+        targets: dict[str, float] = {}
+        actuals: dict[str, float] = {}
+        for row in range(table.rowCount()):
+            if table.item(row, 0) and table.item(row, 0).data(SEPARATOR_ROLE):
+                continue
+            asset_item = table.item(row, asset_col)
+            target_item = table.item(row, target_col)
+            actual_item = table.item(row, actual_col)
+            if asset_item is None or target_item is None or actual_item is None:
+                continue
+            asset = asset_item.text()
+            try:
+                target_val = float(target_item.text().rstrip("%"))
+                actual_val = float(actual_item.text().rstrip("%"))
+            except ValueError:
+                continue
+            targets[asset] = target_val
+            actuals[asset] = actual_val
+
+        return targets, actuals
+
+    def update_asset_charts(self) -> None:
+        targets, actuals = self._gather_asset_allocation()
+
+        self.target_fig.clear()
+        ax1 = self.target_fig.add_subplot(111)
+        labels = list(targets.keys())
+        values = [targets[l] for l in labels]
+        if values:
+            ax1.pie(values, labels=labels, autopct="%1.1f%%")
+        ax1.set_title("Target Asset Allocation")
+        self.target_fig.tight_layout()
+        self.target_canvas.draw()
+
+        self.actual_fig.clear()
+        ax2 = self.actual_fig.add_subplot(111)
+        labels_a = list(actuals.keys())
+        values_a = [actuals[l] for l in labels_a]
+        if values_a:
+            ax2.pie(values_a, labels=labels_a, autopct="%1.1f%%")
+        ax2.set_title("Actual Asset Allocation")
+        self.actual_fig.tight_layout()
+        self.actual_canvas.draw()
 
 
 class MonthlyTabbedWindow(QtWidgets.QMainWindow):
