@@ -226,6 +226,10 @@ class MonthlyTab(QtWidgets.QWidget):
         passive_layout.addWidget(self.passive_canvas)
         top_right.addWidget(passive_group)
 
+        income_section.table.cellChanged.connect(lambda *_: self.update_passive_chart())
+        income_section.table.model().rowsInserted.connect(lambda *_: self.update_passive_chart())
+        income_section.table.model().rowsRemoved.connect(lambda *_: self.update_passive_chart())
+
         cash_end_section = TableSection("Cash at Month End")
         top_right.addWidget(cash_end_section)
 
@@ -254,9 +258,56 @@ class MonthlyTab(QtWidgets.QWidget):
 
         layout.setStretchFactor(main_splitter, 1)
 
+        self.update_passive_chart()
+
     def update_summary(self) -> None:
         """Placeholder for compatibility."""
         pass
+
+    def _gather_passive_income(self) -> dict[str, float]:
+        table = self.sections[0].table
+        headers = {table.horizontalHeaderItem(i).text().strip().lower(): i for i in range(table.columnCount())}
+        desc_col = headers.get("description")
+        amount_col = headers.get("amount")
+        if desc_col is None or amount_col is None:
+            return {}
+        totals: dict[str, float] = {}
+        for row in range(table.rowCount()):
+            if table.item(row, 0) and table.item(row, 0).data(SEPARATOR_ROLE):
+                continue
+            desc_item = table.item(row, desc_col)
+            amt_item = table.item(row, amount_col)
+            if desc_item is None or amt_item is None:
+                continue
+            desc = desc_item.text().lower()
+            try:
+                amt = float(amt_item.text())
+            except ValueError:
+                continue
+            if "chip" in desc:
+                key = "Chip Interest"
+            elif "premium" in desc and "bond" in desc:
+                key = "Premium Bonds"
+            elif "interest" in desc:
+                key = "Interest"
+            elif "dividend" in desc:
+                key = "Dividends"
+            else:
+                continue
+            totals[key] = totals.get(key, 0.0) + amt
+        return totals
+
+    def update_passive_chart(self) -> None:
+        totals = self._gather_passive_income()
+        self.passive_fig.clear()
+        ax = self.passive_fig.add_subplot(111)
+        labels = list(totals.keys())
+        amounts = [totals[l] for l in labels]
+        ax.bar(labels, amounts)
+        ax.set_ylabel("Amount")
+        ax.set_title("Passive Income Sources")
+        self.passive_fig.tight_layout()
+        self.passive_canvas.draw()
 
 
 class MonthlyTabbedWindow(QtWidgets.QMainWindow):
