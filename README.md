@@ -8,7 +8,7 @@ Personal Financial Analysis is a desktop application for tracking and analysing 
 - Automatically archive imported statements and log the import history
 - Categorise transactions and mark recurring expenses or income
 - Month-by-month views with income, expense and credit card tabs
-- Summary dashboard with totals and a bar chart
+- Summary dashboard tab with pie and bar charts
 - Basic admin tools for editing keyword mappings used during categorisation
 - Simple password-protected login screen (configured via `.env`)
 

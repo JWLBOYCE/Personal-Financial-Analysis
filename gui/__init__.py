@@ -3,6 +3,13 @@
 from .main_window import MainWindow
 from .login_window import LoginWindow
 from .monthly_tabbed_window import MonthlyTabbedWindow
+from .dashboard_tab import DashboardTab
 from .navigation_table_widget import NavigationTableWidget
 
-__all__ = ["MainWindow", "LoginWindow", "MonthlyTabbedWindow", "NavigationTableWidget"]
+__all__ = [
+    "MainWindow",
+    "LoginWindow",
+    "MonthlyTabbedWindow",
+    "DashboardTab",
+    "NavigationTableWidget",
+]
