@@ -1,0 +1,6 @@
+PyQt5
+pandas
+pdfplumber
+sqlite3
+openai
+python-dotenv
