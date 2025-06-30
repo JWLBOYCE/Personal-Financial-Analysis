@@ -472,9 +472,38 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
 
         for month in months:
             tab = MonthlyTab(month)
-            self.tabs.addTab(tab, month)
+            wrapper = self._wrap_month_tab(tab)
+            self.tabs.addTab(wrapper, month)
 
         self.tabs.currentChanged.connect(self._tab_changed)
+
+    def _wrap_month_tab(self, tab: QtWidgets.QWidget) -> QtWidgets.QScrollArea:
+        """Return a scroll area containing the given monthly tab."""
+        scroll = QtWidgets.QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        container = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        tab.setSizePolicy(policy)
+        container.setSizePolicy(policy)
+        layout.addWidget(tab)
+        scroll.setWidget(container)
+        return scroll
+
+    def _unwrap_month_tab(self, widget: QtWidgets.QWidget) -> QtWidgets.QWidget:
+        """Return the MonthlyTab contained in the scroll area."""
+        if isinstance(widget, QtWidgets.QScrollArea):
+            container = widget.widget()
+            if (
+                isinstance(container, QtWidgets.QWidget)
+                and container.layout()
+                and container.layout().count() > 0
+            ):
+                return container.layout().itemAt(0).widget()
+        return widget
 
     def _month_selected(self, row: int) -> None:
         index = row + self.month_tab_offset
@@ -492,11 +521,14 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
 
         if self.tabs.count() == 0:
             tab = MonthlyTab(name.strip())
-            self.tabs.addTab(tab, name.strip())
+            wrapper = self._wrap_month_tab(tab)
+            self.tabs.addTab(wrapper, name.strip())
             self.tabs.setCurrentIndex(self.tabs.count() - 1)
             return
 
-        last_tab = self.tabs.widget(self.tabs.count() - 1)
+        last_tab_widget = self.tabs.widget(self.tabs.count() - 1)
+        last_tab = self._unwrap_month_tab(last_tab_widget)
+
         new_tab = MonthlyTab(name.strip())
 
         for idx, section in enumerate(last_tab.sections):
@@ -534,7 +566,8 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
 
         new_tab.update_summary()
 
-        self.tabs.addTab(new_tab, name.strip())
+        wrapper = self._wrap_month_tab(new_tab)
+        self.tabs.addTab(wrapper, name.strip())
         self.month_list.addItem(name.strip())
         new_index = self.tabs.count() - 1
         self.tabs.setCurrentIndex(new_index)
@@ -560,8 +593,9 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:  # type: ignore[override]
         for i in range(self.month_tab_offset, self.tabs.count()):
             widget = self.tabs.widget(i)
-            if hasattr(widget, "save_layout"):
-                widget.save_layout()
+            tab = self._unwrap_month_tab(widget)
+            if hasattr(tab, "save_layout"):
+                tab.save_layout()
         super().closeEvent(event)
 
 
