@@ -65,6 +65,7 @@ class MainWindow(QtWidgets.QMainWindow):
         right_layout.addWidget(self.stack)
 
         self.tables = []  # transaction tables for Income/Expenses/Credit Card
+        self.total_labels = []  # labels showing total amounts for each table
         for tab in self.tabs:
             if tab == "Summary":
                 summary_widget = QtWidgets.QWidget()
@@ -114,13 +115,26 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.stack.addWidget(admin_widget)
                 self.admin_widget = admin_widget
             else:
+                page = QtWidgets.QWidget()
+                page_layout = QtWidgets.QVBoxLayout(page)
+
                 table = QtWidgets.QTableWidget(0, 4)
                 table.setHorizontalHeaderLabels(
                     ["Date", "Description", "Category", "Amount"]
                 )
                 table.horizontalHeader().setStretchLastSection(True)
-                self.stack.addWidget(table)
+                page_layout.addWidget(table)
+
+                total_label = QtWidgets.QLabel("Total: 0.00")
+                page_layout.addWidget(total_label, alignment=QtCore.Qt.AlignRight)
+
+                self.stack.addWidget(page)
                 self.tables.append(table)
+                self.total_labels.append(total_label)
+
+                table.itemChanged.connect(
+                    lambda _item, tbl=table: self._update_table_total(tbl)
+                )
 
         # Bottom action buttons
         button_widget = QtWidgets.QWidget()
@@ -164,7 +178,34 @@ class MainWindow(QtWidgets.QMainWindow):
                 ):
                     table.setItem(i, col, item)
 
+            self._update_table_total(table, update_summary=False)
+
         self._update_summary()
+
+    def _update_table_total(
+        self,
+        table: QtWidgets.QTableWidget,
+        *,
+        update_summary: bool = True,
+    ) -> None:
+        """Recalculate and display the total for a table's Amount column."""
+        try:
+            index = self.tables.index(table)
+        except ValueError:
+            return
+        label = self.total_labels[index]
+        total = 0.0
+        for row in range(table.rowCount()):
+            item = table.item(row, 3)
+            if item is None:
+                continue
+            try:
+                total += float(item.text())
+            except (TypeError, ValueError):
+                pass
+        label.setText(f"Total: {total:.2f}")
+        if update_summary:
+            self._update_summary()
 
     def _update_summary(self) -> None:
         """Update the summary table and chart."""
