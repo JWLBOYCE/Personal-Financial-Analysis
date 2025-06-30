@@ -35,6 +35,15 @@ QTableWidget {
     alternate-background-color: #f2f2f2;
 }
 
+/* Hover and selection highlighting for table rows */
+QTableWidget::item:hover {
+    background: #d7ebff;
+}
+
+QTableWidget::item:selected {
+    background: #aad4ff;
+}
+
 QTableWidget QTableCornerButton::section {
     border: 1px solid #d0d0d0;
     background: #eaeaea;
