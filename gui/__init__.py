@@ -7,6 +7,7 @@ from .dashboard_tab import DashboardTab
 from .recurring_tab import RecurringTab
 from .navigation_table_widget import NavigationTableWidget
 from .table_manager import TransactionTableManager
+from .delegates import AmountDelegate, DateDelegate, CategoryDelegate
 from .inactivity import InactivityFilter, UnlockDialog
 
 __all__ = [
@@ -19,4 +20,7 @@ __all__ = [
     "TransactionTableManager",
     "InactivityFilter",
     "UnlockDialog",
+    "AmountDelegate",
+    "DateDelegate",
+    "CategoryDelegate",
 ]
