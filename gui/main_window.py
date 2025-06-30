@@ -1,6 +1,8 @@
 from PyQt5 import QtWidgets, QtCore
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+import sqlite3
+from logic.categoriser import DB_PATH, _ensure_db
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -52,7 +54,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Top tab bar
         self.tab_bar = QtWidgets.QTabBar(movable=False)
-        self.tabs = ["Income", "Expenses", "Credit Card", "Summary"]
+        self.tabs = ["Income", "Expenses", "Credit Card", "Summary", "Admin"]
         for tab in self.tabs:
             self.tab_bar.addTab(tab)
         self.tab_bar.currentChanged.connect(self.switch_tab)
@@ -83,6 +85,34 @@ class MainWindow(QtWidgets.QMainWindow):
 
                 self.stack.addWidget(summary_widget)
                 self.summary_widget = summary_widget
+            elif tab == "Admin":
+                admin_widget = QtWidgets.QWidget()
+                admin_layout = QtWidgets.QVBoxLayout(admin_widget)
+                self.mapping_table = QtWidgets.QTableWidget(0, 3)
+                self.mapping_table.setHorizontalHeaderLabels(
+                    ["Keyword", "Category", "Last Used"]
+                )
+                self.mapping_table.horizontalHeader().setStretchLastSection(True)
+                admin_layout.addWidget(self.mapping_table)
+
+                btn_layout = QtWidgets.QHBoxLayout()
+                self.edit_mapping_btn = QtWidgets.QPushButton("Edit")
+                self.delete_mapping_btn = QtWidgets.QPushButton("Delete")
+                self.retrain_btn = QtWidgets.QPushButton("Retrain Classifier")
+                for b in (
+                    self.edit_mapping_btn,
+                    self.delete_mapping_btn,
+                    self.retrain_btn,
+                ):
+                    btn_layout.addWidget(b)
+                admin_layout.addLayout(btn_layout)
+
+                self.edit_mapping_btn.clicked.connect(self.edit_mapping)
+                self.delete_mapping_btn.clicked.connect(self.delete_mapping)
+                self.retrain_btn.clicked.connect(self.retrain_classifier)
+
+                self.stack.addWidget(admin_widget)
+                self.admin_widget = admin_widget
             else:
                 table = QtWidgets.QTableWidget(0, 4)
                 table.setHorizontalHeaderLabels(
@@ -114,6 +144,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def switch_tab(self, index: int):
         self.stack.setCurrentIndex(index)
+        if self.tabs[index] == "Admin":
+            self.load_mappings()
 
     def load_dummy_data(self, month: str):
         """Populate tables with dummy transaction data."""
@@ -185,6 +217,105 @@ class MainWindow(QtWidgets.QMainWindow):
         ax.set_ylabel("Amount")
         self.figure.tight_layout()
         self.canvas.draw()
+
+    def _get_conn(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        _ensure_db(conn)
+        return conn
+
+    def load_mappings(self) -> None:
+        """Load keyword mappings into the admin table."""
+        conn = self._get_conn()
+        cur = conn.execute(
+            """
+            SELECT m.id, m.keyword, c.name AS category, m.last_used
+            FROM mappings m LEFT JOIN categories c ON m.category_id = c.id
+            ORDER BY m.keyword
+            """
+        )
+        rows = cur.fetchall()
+        self.mapping_table.setRowCount(0)
+        for i, row in enumerate(rows):
+            self.mapping_table.insertRow(i)
+            item = QtWidgets.QTableWidgetItem(row["keyword"])
+            item.setData(QtCore.Qt.UserRole, row["id"])
+            self.mapping_table.setItem(i, 0, item)
+            self.mapping_table.setItem(
+                i, 1, QtWidgets.QTableWidgetItem(row["category"] or "")
+            )
+            self.mapping_table.setItem(
+                i, 2, QtWidgets.QTableWidgetItem(row["last_used"] or "")
+            )
+        self.mapping_table.resizeColumnsToContents()
+        conn.close()
+
+    def delete_mapping(self) -> None:
+        row = self.mapping_table.currentRow()
+        if row < 0:
+            return
+        item = self.mapping_table.item(row, 0)
+        mid = item.data(QtCore.Qt.UserRole)
+        conn = self._get_conn()
+        conn.execute("DELETE FROM mappings WHERE id = ?", (mid,))
+        conn.commit()
+        conn.close()
+        self.mapping_table.removeRow(row)
+
+    def edit_mapping(self) -> None:
+        row = self.mapping_table.currentRow()
+        if row < 0:
+            return
+        item_keyword = self.mapping_table.item(row, 0)
+        item_category = self.mapping_table.item(row, 1)
+        keyword, ok = QtWidgets.QInputDialog.getText(
+            self, "Edit Keyword", "Keyword:", text=item_keyword.text()
+        )
+        if not ok or not keyword.strip():
+            return
+        category, ok = QtWidgets.QInputDialog.getText(
+            self, "Edit Category", "Category:", text=item_category.text()
+        )
+        if not ok or not category.strip():
+            return
+        conn = self._get_conn()
+        cur = conn.execute(
+            "SELECT id FROM categories WHERE name = ?", (category.strip(),)
+        )
+        cat_row = cur.fetchone()
+        if cat_row:
+            cat_id = cat_row["id"]
+        else:
+            cur = conn.execute(
+                "INSERT INTO categories (name, type) VALUES (?, 'expense')",
+                (category.strip(),),
+            )
+            cat_id = cur.lastrowid
+        mid = item_keyword.data(QtCore.Qt.UserRole)
+        conn.execute(
+            "UPDATE mappings SET keyword = ?, category_id = ? WHERE id = ?",
+            (keyword.strip(), cat_id, mid),
+        )
+        conn.commit()
+        conn.close()
+        self.load_mappings()
+
+    def retrain_classifier(self) -> None:
+        reply = QtWidgets.QMessageBox.question(
+            self,
+            "Retrain",
+            "Delete all mappings and retrain from scratch?",
+        )
+        if reply != QtWidgets.QMessageBox.Yes:
+            return
+        conn = self._get_conn()
+        conn.execute("DELETE FROM mappings")
+        conn.commit()
+        conn.close()
+        QtWidgets.QMessageBox.information(
+            self, "Retrain", "Classifier retrained from scratch."
+        )
+        self.load_mappings()
 
 
 __all__ = ["MainWindow"]
