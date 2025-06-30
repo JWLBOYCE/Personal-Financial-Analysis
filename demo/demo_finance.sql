@@ -33,6 +33,8 @@ INSERT INTO categories VALUES(3,'Investments','expense');
 CREATE TABLE mappings (
     id INTEGER PRIMARY KEY,
     keyword TEXT NOT NULL,
+    min_amount REAL NOT NULL,
+    max_amount REAL NOT NULL,
     category_id INTEGER,
     recurring_guess INTEGER DEFAULT 0,
     last_used TEXT,
