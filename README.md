@@ -12,6 +12,8 @@ Personal Financial Analysis is a desktop application for tracking and analysing 
 - Basic admin tools for editing keyword mappings used during categorisation
 - Simple password-protected login screen (configured via `.env`)
 - Automatic database backups after each batch of transaction classifications
+- Export the monthly summary to a CSV file
+
 
 
 ## Demo Mode
