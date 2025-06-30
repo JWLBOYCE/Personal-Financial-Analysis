@@ -63,6 +63,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Top tab bar
         self.tab_bar = QtWidgets.QTabBar(movable=False)
+        # Ensure tab text is dark for readability
+        self.tab_bar.setStyleSheet("QTabBar::tab{color:#111;}")
         self.tabs = ["Income", "Expenses", "Credit Card", "Summary", "Admin"]
         for tab in self.tabs:
             self.tab_bar.addTab(tab)

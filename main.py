@@ -1,6 +1,7 @@
 """Application entry point for Personal Financial Analysis."""
 
 from PyQt5 import QtWidgets
+from PyQt5 import QtGui
 from dotenv import dotenv_values
 import hashlib
 import os
@@ -16,6 +17,25 @@ def main():
     if os.path.exists(qss_path):
         with open(qss_path) as fh:
             app.setStyleSheet(fh.read())
+
+    # Global palette to ensure high contrast dark text on light backgrounds
+    palette = app.palette()
+    dark = QtGui.QColor("#111")
+    light = QtGui.QColor("white")
+    for role in (
+        QtGui.QPalette.WindowText,
+        QtGui.QPalette.Text,
+        QtGui.QPalette.ButtonText,
+        QtGui.QPalette.ToolTipText,
+        QtGui.QPalette.PlaceholderText,
+    ):
+        palette.setColor(role, dark)
+    for role in (
+        QtGui.QPalette.Window,
+        QtGui.QPalette.Base,
+    ):
+        palette.setColor(role, light)
+    app.setPalette(palette)
 
     config = dotenv_values(".env")
     password_hash = config.get("PASSWORD_HASH")
