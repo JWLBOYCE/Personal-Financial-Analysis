@@ -1,0 +1,41 @@
+/* Global application style resembling Apple Numbers */
+
+/* Light grey background for widgets */
+QWidget {
+    background: #f9f9f9;
+}
+
+/* Rounded group boxes */
+QGroupBox {
+    border: 1px solid #cccccc;
+    border-radius: 8px;
+    margin-top: 16px;
+    padding: 8px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 4px;
+}
+
+/* Table header styling */
+QHeaderView::section {
+    font-weight: bold;
+    color: #0078d7;
+    background: #eaeaea;
+    padding: 4px;
+    border: 1px solid #d0d0d0;
+}
+
+/* Table styling */
+QTableWidget {
+    gridline-color: #d0d0d0;
+    alternating-row-colors: true;
+    background: #ffffff;
+    alternate-background-color: #f2f2f2;
+}
+
+QTableWidget QTableCornerButton::section {
+    border: 1px solid #d0d0d0;
+    background: #eaeaea;
+}

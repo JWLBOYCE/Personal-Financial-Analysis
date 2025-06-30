@@ -3,12 +3,19 @@
 from PyQt5 import QtWidgets
 from dotenv import dotenv_values
 import hashlib
+import os
 
 from gui import LoginWindow
 
 
 def main():
     app = QtWidgets.QApplication([])
+
+    # Apply global stylesheet if available
+    qss_path = os.path.join(os.path.dirname(__file__), "style.qss")
+    if os.path.exists(qss_path):
+        with open(qss_path) as fh:
+            app.setStyleSheet(fh.read())
 
     config = dotenv_values(".env")
     password_hash = config.get("PASSWORD_HASH")
