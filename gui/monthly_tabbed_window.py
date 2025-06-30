@@ -456,7 +456,6 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         months = months or self._generate_default_months()
         self._setup_ui(months)
         self.current_month = months[0]
-        self.month_tab_offset = 2
 
     def _generate_default_months(self):
         """Return a list of upcoming months for the sidebar."""
@@ -475,10 +474,17 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
             )
             layout.addWidget(banner)
 
+        # Central stacked area for monthly views
+        self.month_stack = QtWidgets.QStackedWidget()
+        layout.addWidget(self.month_stack)
+
         self.tabs = QtWidgets.QTabWidget()
         # Tab labels in dark text for high contrast
         self.tabs.tabBar().setStyleSheet("QTabBar::tab{color:#111;}")
         layout.addWidget(self.tabs)
+
+        layout.setStretch(layout.indexOf(self.month_stack), 1)
+        layout.setStretch(layout.indexOf(self.tabs), 0)
         self.setCentralWidget(main_widget)
 
         # Sidebar dock containing month list
@@ -509,9 +515,10 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         for month in months:
             tab = MonthlyTab(month)
             wrapper = self._wrap_month_tab(tab)
-            self.tabs.addTab(wrapper, month)
+            self.month_stack.addWidget(wrapper)
 
         self.tabs.currentChanged.connect(self._tab_changed)
+        self.month_stack.setCurrentIndex(0)
 
     def _wrap_month_tab(self, tab: QtWidgets.QWidget) -> QtWidgets.QScrollArea:
         """Return a scroll area containing the given monthly tab."""
@@ -542,9 +549,10 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         return widget
 
     def _month_selected(self, row: int) -> None:
-        index = row + self.month_tab_offset
-        if 0 <= index < self.tabs.count():
-            self.tabs.setCurrentIndex(index)
+        if 0 <= row < self.month_stack.count():
+            self.month_stack.setCurrentIndex(row)
+            self.current_month = self.month_list.item(row).text()
+            self.dashboard.update_dashboard(self.current_month)
 
     def add_new_month(self) -> None:
         """Create a new tab based on the most recent month's data."""
@@ -555,15 +563,15 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         if not ok or not name.strip():
             return
 
-        if self.tabs.count() == 0:
+        if self.month_stack.count() == 0:
             tab = MonthlyTab(name.strip())
             wrapper = self._wrap_month_tab(tab)
-            self.tabs.addTab(wrapper, name.strip())
-            self.tabs.setCurrentIndex(self.tabs.count() - 1)
+            self.month_stack.addWidget(wrapper)
+            self.month_stack.setCurrentIndex(0)
             return
 
-        last_tab_widget = self.tabs.widget(self.tabs.count() - 1)
-        last_tab = self._unwrap_month_tab(last_tab_widget)
+        last_widget = self.month_stack.widget(self.month_stack.count() - 1)
+        last_tab = self._unwrap_month_tab(last_widget)
 
         new_tab = MonthlyTab(name.strip())
 
@@ -603,11 +611,11 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         new_tab.update_summary()
 
         wrapper = self._wrap_month_tab(new_tab)
-        self.tabs.addTab(wrapper, name.strip())
+        self.month_stack.addWidget(wrapper)
         self.month_list.addItem(name.strip())
-        new_index = self.tabs.count() - 1
-        self.tabs.setCurrentIndex(new_index)
-        self.month_list.setCurrentRow(new_index - self.month_tab_offset)
+        new_index = self.month_stack.count() - 1
+        self.month_stack.setCurrentIndex(new_index)
+        self.month_list.setCurrentRow(new_index)
         self.current_month = name.strip()
         self.dashboard.update_dashboard(self.current_month)
 
@@ -618,17 +626,10 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
             self.dashboard.update_dashboard(self.current_month)
         elif widget is self.recurring:
             self.recurring.load_data()
-        else:
-            self.current_month = self.tabs.tabText(index)
-            row = index - self.month_tab_offset
-            if 0 <= row < self.month_list.count():
-                self.month_list.blockSignals(True)
-                self.month_list.setCurrentRow(row)
-                self.month_list.blockSignals(False)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:  # type: ignore[override]
-        for i in range(self.month_tab_offset, self.tabs.count()):
-            widget = self.tabs.widget(i)
+        for i in range(self.month_stack.count()):
+            widget = self.month_stack.widget(i)
             tab = self._unwrap_month_tab(widget)
             if hasattr(tab, "save_layout"):
                 tab.save_layout()
