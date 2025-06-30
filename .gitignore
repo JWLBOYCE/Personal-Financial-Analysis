@@ -1,0 +1,15 @@
+# Sensitive data folders
+/statements/
+/archived/
+/data/finance.db
+/data/finance_backup.db
+
+# Config and credentials
+.env
+*.env
+*.key
+
+# System files
+__pycache__/
+*.pyc
+.DS_Store
