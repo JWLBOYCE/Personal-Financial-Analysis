@@ -1,4 +1,6 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
+import os
+import pandas as pd
 from .navigation_table_widget import NavigationTableWidget
 from .dashboard_tab import DashboardTab
 from .recurring_tab import RecurringTab
@@ -115,9 +117,10 @@ class TableSection(QtWidgets.QGroupBox):
 class SummarySection(QtWidgets.QGroupBox):
     """Panel showing monthly totals."""
 
-    def __init__(self) -> None:
+    def __init__(self, month_name: str) -> None:
         super().__init__("Monthly Summary")
         layout = QtWidgets.QGridLayout(self)
+        self.month_name = month_name
 
         self._labels = {}
         rows = [
@@ -136,6 +139,17 @@ class SummarySection(QtWidgets.QGroupBox):
             layout.addWidget(value, i, 1)
             self._labels[key] = value
 
+        self.export_btn = QtWidgets.QPushButton("Export")
+        layout.addWidget(
+            self.export_btn,
+            len(rows),
+            0,
+            1,
+            2,
+            alignment=QtCore.Qt.AlignRight,
+        )
+        self.export_btn.clicked.connect(self.export_summary)
+
     def set_values(
         self,
         income: float,
@@ -147,6 +161,31 @@ class SummarySection(QtWidgets.QGroupBox):
         self._labels["expenses"].setText(f"{expenses:.2f}")
         self._labels["net"].setText(f"{net:.2f}")
         self._labels["credit"].setText(f"{credit:.2f}")
+
+    def export_summary(self) -> None:
+        """Write the summary values to a CSV file."""
+        income = float(self._labels["income"].text())
+        expenses = float(self._labels["expenses"].text())
+        net = float(self._labels["net"].text())
+        credit = float(self._labels["credit"].text())
+
+        data = {
+            "Total Income": [income],
+            "Total Expenses": [expenses],
+            "Net Cashflow": [net],
+            "Credit Card Spend": [credit],
+        }
+        df = pd.DataFrame(data)
+
+        os.makedirs("exports", exist_ok=True)
+        month = self.month_name.replace(" ", "_")
+        path = os.path.join("exports", f"summary_{month}.csv")
+        df.to_csv(path, index=False)
+        QtWidgets.QMessageBox.information(
+            self,
+            "Export",
+            f"Summary exported to {path}",
+        )
 
 
 class MonthlyTab(QtWidgets.QWidget):
@@ -177,7 +216,8 @@ class MonthlyTab(QtWidgets.QWidget):
                 lambda *_: self.update_summary()
             )
 
-        self.summary = SummarySection()
+        self.month_name = month_name
+        self.summary = SummarySection(month_name)
         layout.addWidget(self.summary)
 
         layout.addStretch(1)
