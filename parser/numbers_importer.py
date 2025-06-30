@@ -10,6 +10,7 @@ from gui.navigation_table_widget import (
     CATEGORY_METHOD_ROLE,
     IS_RECURRING_ROLE,
 )
+from gui.table_manager import TransactionTableManager
 
 
 
@@ -82,71 +83,24 @@ def create_numbers_layout(data: Dict[str, Any]) -> QtWidgets.QTabWidget:
         page = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(page)
         table = NavigationTableWidget(0, len(headers))
-        table.setHorizontalHeaderLabels(headers)
-        layout.addWidget(table)
         total_label = QtWidgets.QLabel("Total: 0.00")
+        manager = TransactionTableManager(table, total_label)
+        manager.set_headers(headers)
+        layout.addWidget(table)
         layout.addWidget(total_label, alignment=QtCore.Qt.AlignRight)
         widget.addTab(page, section)
 
         for idx, row in rows:
-            r = table.rowCount()
-            table.insertRow(r)
-            for c, h in enumerate(headers):
-                item = QtWidgets.QTableWidgetItem(str(row.get(h, "")))
-                header_lower = h.strip().lower()
-                if header_lower == "description":
-                    item.setData(ORIGINAL_DESC_ROLE, item.text())
-                if header_lower == "category":
-                    item.setData(CATEGORY_METHOD_ROLE, "manual")
-                if _is_recurring(idx, recurring_rows):
-                    item.setData(IS_RECURRING_ROLE, True)
-                    font = QtGui.QFont(item.font())
-                    font.setItalic(True)
-                    item.setFont(font)
-                table.setItem(r, c, item)
-            # Apply tooltip after all items are set
-            table.update_row_tooltip(r)
+            values = [row.get(h, "") for h in headers]
+            manager.add_row(values, recurring=_is_recurring(idx, recurring_rows))
 
-        # Recalculate totals whenever the table content changes
-        table.cellChanged.connect(
-            lambda _r, _c, tbl=table, lbl=total_label: _update_total(tbl, lbl)
-        )
-        model = table.model()
-        model.rowsInserted.connect(
-            lambda *_args, tbl=table, lbl=total_label: _update_total(tbl, lbl)
-        )
-        model.rowsRemoved.connect(
-            lambda *_args, tbl=table, lbl=total_label: _update_total(tbl, lbl)
-        )
-        _update_total(table, total_label)
+        manager.update_total()
 
     return widget
 
 
 def _is_recurring(index: int, recurring_rows: set[int]) -> bool:
     return index in recurring_rows
-
-
-def _update_total(table: QtWidgets.QTableWidget, label: QtWidgets.QLabel) -> None:
-    total = 0.0
-    amount_col = None
-    for i in range(table.columnCount()):
-        header = table.horizontalHeaderItem(i)
-        if header and header.text().lower() == "amount":
-            amount_col = i
-            break
-    if amount_col is None:
-        label.setText("Total: 0.00")
-        return
-    for row in range(table.rowCount()):
-        item = table.item(row, amount_col)
-        if item is None:
-            continue
-        try:
-            total += float(item.text())
-        except ValueError:
-            pass
-    label.setText(f"Total: {total:.2f}")
 
 
 __all__ = ["parse_numbers_csv", "create_numbers_layout", "IS_RECURRING_ROLE"]

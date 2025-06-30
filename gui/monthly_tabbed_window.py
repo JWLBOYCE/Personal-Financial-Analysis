@@ -1,15 +1,15 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
 import os
 import pandas as pd
-from .navigation_table_widget import NavigationTableWidget
-from .dashboard_tab import DashboardTab
-from .recurring_tab import RecurringTab
 from .navigation_table_widget import (
     NavigationTableWidget,
     ORIGINAL_DESC_ROLE,
     CATEGORY_METHOD_ROLE,
     IS_RECURRING_ROLE,
 )
+from .dashboard_tab import DashboardTab
+from .recurring_tab import RecurringTab
+from .table_manager import TransactionTableManager
 from datetime import datetime
 
 # Custom role used to store whether a row is marked as recurring is imported
@@ -26,22 +26,22 @@ class TableSection(QtWidgets.QGroupBox):
         layout = QtWidgets.QVBoxLayout(self)
 
         self.table = NavigationTableWidget(0, 5)
-        self.table.setHorizontalHeaderLabels(
-            ["Date", "Description", "Amount", "Category", "Notes"]
-        )
-        self.table.horizontalHeader().setStretchLastSection(True)
-        layout.addWidget(self.table)
-
         self.total_label = QtWidgets.QLabel("Total: 0.00")
+        self.manager = TransactionTableManager(self.table, self.total_label)
+        self.manager.set_headers([
+            "Date",
+            "Description",
+            "Amount",
+            "Category",
+            "Notes",
+        ])
+        layout.addWidget(self.table)
         layout.addWidget(self.total_label, alignment=QtCore.Qt.AlignRight)
 
-        # Keep the total label in sync with table edits
-        self.table.cellChanged.connect(lambda _r, _c: self.update_total())
+        # Keep the summary table in sync
+        self.table.cellChanged.connect(lambda *_: self.update_total())
         self.table.model().rowsInserted.connect(lambda *_: self.update_total())
         self.table.model().rowsRemoved.connect(lambda *_: self.update_total())
-        self.table.cellChanged.connect(
-            lambda r, _c: self.table.update_row_tooltip(r)
-        )
 
         # Track the row index of the last classified transaction
         self.last_classified_row: int = -1
@@ -52,15 +52,7 @@ class TableSection(QtWidgets.QGroupBox):
     # ------------------------------------------------------------------
     def set_row_recurring(self, row: int, recurring: bool) -> None:
         """Mark a row as recurring and update its font style."""
-        for col in range(self.table.columnCount()):
-            item = self.table.item(row, col)
-            if item is None:
-                continue
-            item.setData(IS_RECURRING_ROLE, recurring)
-            font = QtGui.QFont(item.font())
-            font.setItalic(recurring)
-            item.setFont(font)
-        self.table.update_row_tooltip(row)
+        self.manager.apply_recurring_format(row, recurring)
 
     def toggle_selected_recurring(self) -> None:
         """Toggle the recurring flag for all selected rows."""
@@ -98,20 +90,7 @@ class TableSection(QtWidgets.QGroupBox):
 
     def update_total(self) -> None:
         """Recalculate the total for the Amount column."""
-        total = 0.0
-        for row in range(self.table.rowCount()):
-            # Skip the grey separator row
-            first = self.table.item(row, 0)
-            if first and first.data(SEPARATOR_ROLE):
-                continue
-            item = self.table.item(row, 2)
-            if item is None:
-                continue
-            try:
-                total += float(item.text())
-            except (TypeError, ValueError):
-                pass
-        self.total_label.setText(f"Total: {total:.2f}")
+        self.manager.update_total()
 
 
 class SummarySection(QtWidgets.QGroupBox):
@@ -311,28 +290,26 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
                     continue
                 if not first.data(IS_RECURRING_ROLE):
                     continue
-                dest_row = dst_section.table.rowCount()
-                dst_section.table.insertRow(dest_row)
+                values = [
+                    src_table.item(row, c).text() if src_table.item(row, c) else ""
+                    for c in range(src_table.columnCount())
+                ]
+                dest_row = dst_section.manager.add_row(values, recurring=True)
                 for col in range(src_table.columnCount()):
                     src_item = src_table.item(row, col)
-                    text = src_item.text() if src_item else ""
-                    item = QtWidgets.QTableWidgetItem(text)
-                    item.setData(IS_RECURRING_ROLE, True)
-                    if src_item is not None:
-                        if col == 1:
-                            item.setData(
-                                ORIGINAL_DESC_ROLE,
-                                src_item.data(ORIGINAL_DESC_ROLE) or src_item.text(),
-                            )
-                        if col == 3:
-                            item.setData(
-                                CATEGORY_METHOD_ROLE,
-                                src_item.data(CATEGORY_METHOD_ROLE) or "manual",
-                            )
-                    font = QtGui.QFont(item.font())
-                    font.setItalic(True)
-                    item.setFont(font)
-                    dst_section.table.setItem(dest_row, col, item)
+                    dst_item = dst_section.table.item(dest_row, col)
+                    if src_item is None or dst_item is None:
+                        continue
+                    if col == 1:
+                        dst_item.setData(
+                            ORIGINAL_DESC_ROLE,
+                            src_item.data(ORIGINAL_DESC_ROLE) or src_item.text(),
+                        )
+                    if col == 3:
+                        dst_item.setData(
+                            CATEGORY_METHOD_ROLE,
+                            src_item.data(CATEGORY_METHOD_ROLE) or "manual",
+                        )
                 dst_section.table.update_row_tooltip(dest_row)
             dst_section.set_last_classified_row(-1)
             dst_section.update_total()
