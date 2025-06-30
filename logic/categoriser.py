@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import sqlite3
 from datetime import datetime
+from difflib import SequenceMatcher
 from typing import Optional, Tuple
 
 from PyQt5 import QtWidgets
@@ -39,8 +40,8 @@ class Categoriser:
 
     def classify(self, description: str, amount: float, parent: Optional[QtWidgets.QWidget] = None) -> Tuple[Optional[int], bool]:
         """Classify a transaction and detect if it is recurring."""
-        category_id = self._lookup_mapping(description, amount)
-        if category_id is None:
+        category_id, confidence = self._lookup_mapping(description, amount)
+        if category_id is None or confidence < 90:
             category_id = self._prompt_user(description, parent)
             if category_id is not None:
                 keyword = self._prompt_keyword(description, parent)
@@ -48,19 +49,27 @@ class Categoriser:
                     self._save_mapping(keyword, category_id)
         return category_id, self._is_recurring(description, amount)
 
-    def _lookup_mapping(self, desc: str, amt: float) -> Optional[int]:
+    def _lookup_mapping(self, desc: str, amt: float) -> Tuple[Optional[int], float]:
         cur = self.conn.execute("SELECT id, keyword, category_id FROM mappings")
+        best_id: Optional[int] = None
+        best_score = 0.0
+        best_row_id: Optional[int] = None
         for row in cur.fetchall():
-            if row["keyword"].lower() in desc.lower():
+            score = SequenceMatcher(None, row["keyword"].lower(), desc.lower()).ratio() * 100
+            if score > best_score:
                 min_amt, max_amt = self._amount_range(row["keyword"])
                 if min_amt is None or (min_amt <= amt <= max_amt):
-                    self.conn.execute(
-                        "UPDATE mappings SET last_used = ? WHERE id = ?",
-                        (datetime.now().isoformat(), row["id"]),
-                    )
-                    self.conn.commit()
-                    return row["category_id"]
-        return None
+                    best_score = score
+                    best_id = row["category_id"]
+                    best_row_id = row["id"]
+        if best_id is not None and best_score >= 90:
+            self.conn.execute(
+                "UPDATE mappings SET last_used = ? WHERE id = ?",
+                (datetime.now().isoformat(), best_row_id),
+            )
+            self.conn.commit()
+            return best_id, best_score
+        return None, 0.0
 
     def _amount_range(self, keyword: str) -> Tuple[Optional[float], Optional[float]]:
         cur = self.conn.execute(
@@ -159,17 +168,17 @@ def _ensure_tables(conn: sqlite3.Connection) -> None:
 
 def _search_mapping(conn: sqlite3.Connection, description: str, amount: float) -> Optional[str]:
     cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT category FROM mappings
-        WHERE ? LIKE '%' || keyword || '%'
-        AND ? BETWEEN min_amount AND max_amount
-        LIMIT 1
-        """,
-        (description, amount),
-    )
-    row = cur.fetchone()
-    return row[0] if row else None
+    cur.execute("SELECT id, keyword, category, min_amount, max_amount FROM mappings")
+    best_cat: Optional[str] = None
+    best_score = 0.0
+    for row in cur.fetchall():
+        score = SequenceMatcher(None, row["keyword"].lower(), description.lower()).ratio() * 100
+        if score > best_score and row["min_amount"] <= amount <= row["max_amount"]:
+            best_score = score
+            best_cat = row["category"]
+    if best_score >= 90:
+        return best_cat
+    return None
 
 
 def _save_mapping(conn: sqlite3.Connection, keyword: str, amount: float, category: str) -> None:
