@@ -1,10 +1,16 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
 from .navigation_table_widget import NavigationTableWidget
 from .dashboard_tab import DashboardTab
+from .navigation_table_widget import (
+    NavigationTableWidget,
+    ORIGINAL_DESC_ROLE,
+    CATEGORY_METHOD_ROLE,
+    IS_RECURRING_ROLE,
+)
 from datetime import datetime
 
-# Custom role used to store whether a row is marked as recurring
-IS_RECURRING_ROLE = QtCore.Qt.UserRole + 1
+# Custom role used to store whether a row is marked as recurring is imported
+# above as ``IS_RECURRING_ROLE``.
 # Role used to flag the separator row that indicates the last classified point
 SEPARATOR_ROLE = QtCore.Qt.UserRole + 2
 
@@ -27,6 +33,9 @@ class TableSection(QtWidgets.QGroupBox):
         layout.addWidget(self.total_label, alignment=QtCore.Qt.AlignRight)
 
         self.table.itemChanged.connect(self.update_total)
+        self.table.itemChanged.connect(
+            lambda item: self.table.update_row_tooltip(item.row())
+        )
 
         # Track the row index of the last classified transaction
         self.last_classified_row: int = -1
@@ -45,6 +54,7 @@ class TableSection(QtWidgets.QGroupBox):
             font = QtGui.QFont(item.font())
             font.setItalic(recurring)
             item.setFont(font)
+        self.table.update_row_tooltip(row)
 
     def toggle_selected_recurring(self) -> None:
         """Toggle the recurring flag for all selected rows."""
@@ -255,10 +265,22 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
                     text = src_item.text() if src_item else ""
                     item = QtWidgets.QTableWidgetItem(text)
                     item.setData(IS_RECURRING_ROLE, True)
+                    if src_item is not None:
+                        if col == 1:
+                            item.setData(
+                                ORIGINAL_DESC_ROLE,
+                                src_item.data(ORIGINAL_DESC_ROLE) or src_item.text(),
+                            )
+                        if col == 3:
+                            item.setData(
+                                CATEGORY_METHOD_ROLE,
+                                src_item.data(CATEGORY_METHOD_ROLE) or "manual",
+                            )
                     font = QtGui.QFont(item.font())
                     font.setItalic(True)
                     item.setFont(font)
                     dst_section.table.setItem(dest_row, col, item)
+                dst_section.table.update_row_tooltip(dest_row)
             dst_section.set_last_classified_row(-1)
             dst_section.update_total()
 

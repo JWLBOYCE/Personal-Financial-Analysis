@@ -1,5 +1,9 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
-from .navigation_table_widget import NavigationTableWidget
+from .navigation_table_widget import (
+    NavigationTableWidget,
+    ORIGINAL_DESC_ROLE,
+    CATEGORY_METHOD_ROLE,
+)
 
 # Custom role used to store whether a transaction is recurring
 IS_RECURRING_ROLE = QtCore.Qt.UserRole + 1
@@ -176,7 +180,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 desc_item = QtWidgets.QTableWidgetItem(
                     f"{month} transaction {i+1}"
                 )
+                desc_item.setData(ORIGINAL_DESC_ROLE, desc_item.text())
                 cat_item = QtWidgets.QTableWidgetItem("Misc")
+                cat_item.setData(CATEGORY_METHOD_ROLE, "manual")
                 amt_item = QtWidgets.QTableWidgetItem(f"{(i+1)*10:.2f}")
                 # Mark the first row as recurring for demo purposes
                 is_recurring = i == 0
@@ -190,6 +196,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     [date_item, desc_item, cat_item, amt_item]
                 ):
                     table.setItem(i, col, item)
+                table.update_row_tooltip(i)
 
             self._update_table_total(table, update_summary=False)
 
@@ -372,6 +379,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 font = QtGui.QFont(item.font())
                 font.setItalic(not current)
                 item.setFont(font)
+            table.update_row_tooltip(row)
 
     def retrain_classifier(self) -> None:
         reply = QtWidgets.QMessageBox.question(
