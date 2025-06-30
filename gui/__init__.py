@@ -3,6 +3,7 @@
 from .main_window import MainWindow
 from .login_window import LoginWindow
 from .monthly_tabbed_window import MonthlyTabbedWindow
+from .data_table_section import DataTableSection
 from .dashboard_tab import DashboardTab
 from .recurring_tab import RecurringTab
 from .navigation_table_widget import NavigationTableWidget
@@ -23,4 +24,5 @@ __all__ = [
     "AmountDelegate",
     "DateDelegate",
     "CategoryDelegate",
+    "DataTableSection",
 ]

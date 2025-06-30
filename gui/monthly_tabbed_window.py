@@ -97,6 +97,9 @@ class TableSection(QtWidgets.QGroupBox):
         self.manager.update_total()
 
 
+from .data_table_section import DataTableSection
+
+
 class SummarySection(QtWidgets.QGroupBox):
     """Panel showing monthly totals."""
 
@@ -197,14 +200,25 @@ class MonthlyTab(QtWidgets.QMainWindow):
             self.addDockWidget(area, dock)
             return dock
 
-        income_section = TableSection("Income Table")
-        expenses_section = TableSection("Expenses Table")
-        self.sections = [income_section, expenses_section]
+        sections_info = [
+            ("Income Table", "income"),
+            ("Expenses Table", "expenses"),
+            ("Withdrawals Table", "withdrawals"),
+            ("Assets Table", "assets"),
+            ("Liabilities Table", "liabilities"),
+            ("Provisions Table", "provisions"),
+            ("Credit Card Classifier Table", "credit_card"),
+            ("Cash at Month End Table", "cash_end"),
+            ("Cash Crosscheck Table", "cash_crosscheck"),
+            ("Net Worth Table", "net_worth"),
+            ("Asset Allocation Table", "asset_allocation"),
+        ]
+
+        self.sections = [DataTableSection(title, key, self.month_name) for title, key in sections_info]
         for section in self.sections:
             section.set_last_classified_row(-1)
 
-        networth_section = TableSection("Net Worth")
-        liabilities_section = TableSection("Liabilities")
+        income_section = self.sections[0]
 
         passive_group = QtWidgets.QGroupBox("Passive Income")
         passive_layout = QtWidgets.QVBoxLayout(passive_group)
@@ -216,9 +230,6 @@ class MonthlyTab(QtWidgets.QMainWindow):
         income_section.table.model().rowsInserted.connect(lambda *_: self.update_passive_chart())
         income_section.table.model().rowsRemoved.connect(lambda *_: self.update_passive_chart())
 
-        cash_end_section = TableSection("Cash at Month End")
-        crosscheck_section = TableSection("Cash Crosscheck")
-
         aa_chart_group = QtWidgets.QGroupBox("Asset Allocation Pie Charts")
         aa_chart_layout = QtWidgets.QHBoxLayout(aa_chart_group)
         self.target_fig = Figure(figsize=(3, 3))
@@ -228,21 +239,26 @@ class MonthlyTab(QtWidgets.QMainWindow):
         aa_chart_layout.addWidget(self.target_canvas)
         aa_chart_layout.addWidget(self.actual_canvas)
 
-        asset_table_section = TableSection("Asset Allocation Table")
-        provisions_section = TableSection("Provisions Table")
-        cc_classifier_section = TableSection("Credit Card Classifier Table")
+        dock_map = {
+            "Income Table": QtCore.Qt.LeftDockWidgetArea,
+            "Expenses Table": QtCore.Qt.LeftDockWidgetArea,
+            "Withdrawals Table": QtCore.Qt.LeftDockWidgetArea,
+            "Assets Table": QtCore.Qt.LeftDockWidgetArea,
+            "Liabilities Table": QtCore.Qt.LeftDockWidgetArea,
+            "Net Worth Table": QtCore.Qt.LeftDockWidgetArea,
+            "Provisions Table": QtCore.Qt.RightDockWidgetArea,
+            "Credit Card Classifier Table": QtCore.Qt.RightDockWidgetArea,
+            "Cash at Month End Table": QtCore.Qt.RightDockWidgetArea,
+            "Cash Crosscheck Table": QtCore.Qt.RightDockWidgetArea,
+            "Asset Allocation Table": QtCore.Qt.RightDockWidgetArea,
+        }
 
-        make_dock("Income", income_section, QtCore.Qt.LeftDockWidgetArea)
-        make_dock("Expenses", expenses_section, QtCore.Qt.LeftDockWidgetArea)
-        make_dock("Net Worth", networth_section, QtCore.Qt.LeftDockWidgetArea)
-        make_dock("Liabilities", liabilities_section, QtCore.Qt.LeftDockWidgetArea)
         make_dock("Passive Income", passive_group, QtCore.Qt.RightDockWidgetArea)
-        make_dock("Cash End", cash_end_section, QtCore.Qt.RightDockWidgetArea)
-        make_dock("Cash Crosscheck", crosscheck_section, QtCore.Qt.RightDockWidgetArea)
         make_dock("Asset Allocation Charts", aa_chart_group, QtCore.Qt.RightDockWidgetArea)
-        make_dock("Asset Allocation Table", asset_table_section, QtCore.Qt.RightDockWidgetArea)
-        make_dock("Provisions Table", provisions_section, QtCore.Qt.RightDockWidgetArea)
-        make_dock("Credit Card Classifier", cc_classifier_section, QtCore.Qt.RightDockWidgetArea)
+
+        for section in self.sections:
+            area = dock_map.get(section.title(), QtCore.Qt.RightDockWidgetArea)
+            make_dock(section.title().replace("Table", "").strip(), section, area)
 
         self._load_layout()
 
@@ -481,6 +497,7 @@ __all__ = [
     "MonthlyTabbedWindow",
     "MonthlyTab",
     "TableSection",
+    "DataTableSection",
     "SummarySection",
     "RecurringTab",
 ]
