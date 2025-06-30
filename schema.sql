@@ -39,3 +39,11 @@ CREATE TABLE IF NOT EXISTS mappings (
     FOREIGN KEY(category_id) REFERENCES categories(id)
 );
 
+-- Table for archived import logs
+CREATE TABLE IF NOT EXISTS import_logs (
+    id INTEGER PRIMARY KEY,
+    file_name TEXT NOT NULL,
+    date TEXT NOT NULL,
+    type TEXT NOT NULL
+);
+

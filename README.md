@@ -9,6 +9,7 @@ This project is a desktop financial analysis tool built with PyQt and SQLite. It
 - `parser/` - CSV and PDF parsers
 - `logic/` - classification and transaction processing
 - `archived/` - processed statement files
+- `import_logs` table tracks archived imports
 - `main.py` - application entry point
 
 ## Login
@@ -27,3 +28,8 @@ Install the required dependencies and run the application:
 pip install -r requirements.txt
 python main.py
 ```
+
+When a CSV or PDF statement is imported, the original file is moved to the
+`archived/` directory and renamed with the import date, for example
+`statement_Starling_2023-03-01.csv`. Each archived import is recorded in the
+`import_logs` table.
