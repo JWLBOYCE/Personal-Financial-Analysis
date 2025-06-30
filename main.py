@@ -5,7 +5,7 @@ from dotenv import dotenv_values
 import hashlib
 import os
 
-from gui import LoginWindow
+from gui import LoginWindow, InactivityFilter
 
 
 def main():
@@ -42,6 +42,8 @@ def main():
             f.write(f"PASSWORD_HASH={password_hash}\n")
 
     login = LoginWindow()
+    inactivity = InactivityFilter(password_hash)
+    app.installEventFilter(inactivity)
     login.show()
     app.exec_()
 
