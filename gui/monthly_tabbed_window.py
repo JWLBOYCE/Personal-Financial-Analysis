@@ -240,9 +240,16 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         super().__init__()
         self.setWindowTitle("Personal Financial Analysis")
         self.resize(1000, 700)
-        months = months or ["March 2024"]
+        months = months or self._generate_default_months()
         self._setup_ui(months)
         self.current_month = months[0]
+        self.month_tab_offset = 2
+
+    def _generate_default_months(self):
+        """Return a list of upcoming months for the sidebar."""
+        start = pd.Timestamp("2025-03-01")
+        dates = pd.date_range(start, periods=3, freq="MS")
+        return [d.strftime("%B %Y") for d in dates]
 
     def _setup_ui(self, months) -> None:
         main_widget = QtWidgets.QWidget()
@@ -261,6 +268,20 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         layout.addWidget(self.tabs)
         self.setCentralWidget(main_widget)
 
+        # Sidebar dock containing month list
+        self.month_list = QtWidgets.QListWidget()
+        self.month_list.addItems(months)
+        self.month_list.setCurrentRow(0)
+        self.month_list.currentRowChanged.connect(self._month_selected)
+        self.month_list.setStyleSheet(
+            "QListWidget{background:#ffffff;color:#000;}"
+        )
+        dock = QtWidgets.QDockWidget("Months", self)
+        dock.setObjectName("MonthsDock")
+        dock.setWidget(self.month_list)
+        dock.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures)
+        self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, dock)
+
         toolbar = self.addToolBar("Main")
         new_month_action = QtWidgets.QAction("New Month", self)
         toolbar.addAction(new_month_action)
@@ -277,6 +298,11 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
             self.tabs.addTab(tab, month)
 
         self.tabs.currentChanged.connect(self._tab_changed)
+
+    def _month_selected(self, row: int) -> None:
+        index = row + self.month_tab_offset
+        if 0 <= index < self.tabs.count():
+            self.tabs.setCurrentIndex(index)
 
     def add_new_month(self) -> None:
         """Create a new tab based on the most recent month's data."""
@@ -332,7 +358,10 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         new_tab.update_summary()
 
         self.tabs.addTab(new_tab, name.strip())
-        self.tabs.setCurrentIndex(self.tabs.count() - 1)
+        self.month_list.addItem(name.strip())
+        new_index = self.tabs.count() - 1
+        self.tabs.setCurrentIndex(new_index)
+        self.month_list.setCurrentRow(new_index - self.month_tab_offset)
         self.current_month = name.strip()
         self.dashboard.update_dashboard(self.current_month)
 
@@ -345,6 +374,11 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
             self.recurring.load_data()
         else:
             self.current_month = self.tabs.tabText(index)
+            row = index - self.month_tab_offset
+            if 0 <= row < self.month_list.count():
+                self.month_list.blockSignals(True)
+                self.month_list.setCurrentRow(row)
+                self.month_list.blockSignals(False)
 
 
 __all__ = [
