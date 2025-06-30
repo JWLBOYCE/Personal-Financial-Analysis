@@ -5,9 +5,12 @@ from __future__ import annotations
 from typing import Dict, List, Any, Tuple, Iterable
 import pandas as pd
 from PyQt5 import QtWidgets, QtGui, QtCore
+from gui.navigation_table_widget import (
+    ORIGINAL_DESC_ROLE,
+    CATEGORY_METHOD_ROLE,
+    IS_RECURRING_ROLE,
+)
 
-# Custom role used to mark recurring entries in a table
-IS_RECURRING_ROLE = QtCore.Qt.UserRole + 1
 
 
 def _infer_type(series: Iterable[Any]) -> str:
@@ -78,7 +81,7 @@ def create_numbers_layout(data: Dict[str, Any]) -> QtWidgets.QTabWidget:
     for section, rows in data["sections"].items():
         page = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(page)
-        table = QtWidgets.QTableWidget(0, len(headers))
+        table = NavigationTableWidget(0, len(headers))
         table.setHorizontalHeaderLabels(headers)
         layout.addWidget(table)
         total_label = QtWidgets.QLabel("Total: 0.00")
@@ -90,12 +93,19 @@ def create_numbers_layout(data: Dict[str, Any]) -> QtWidgets.QTabWidget:
             table.insertRow(r)
             for c, h in enumerate(headers):
                 item = QtWidgets.QTableWidgetItem(str(row.get(h, "")))
+                header_lower = h.strip().lower()
+                if header_lower == "description":
+                    item.setData(ORIGINAL_DESC_ROLE, item.text())
+                if header_lower == "category":
+                    item.setData(CATEGORY_METHOD_ROLE, "manual")
                 if _is_recurring(idx, recurring_rows):
                     item.setData(IS_RECURRING_ROLE, True)
                     font = QtGui.QFont(item.font())
                     font.setItalic(True)
                     item.setFont(font)
                 table.setItem(r, c, item)
+            # Apply tooltip after all items are set
+            table.update_row_tooltip(r)
 
         table.itemChanged.connect(
             lambda _item, tbl=table, lbl=total_label: _update_total(tbl, lbl)
