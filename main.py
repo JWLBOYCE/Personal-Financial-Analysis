@@ -2,12 +2,12 @@
 
 from PyQt5 import QtWidgets
 
+from gui import MainWindow
+
 
 def main():
     app = QtWidgets.QApplication([])
-    # TODO: implement GUI initialization
-    window = QtWidgets.QMainWindow()
-    window.setWindowTitle('Personal Financial Analysis')
+    window = MainWindow()
     window.show()
     app.exec_()
 
