@@ -10,6 +10,7 @@ from .navigation_table_widget import NavigationTableWidget
 from .table_manager import TransactionTableManager
 from .delegates import AmountDelegate, DateDelegate, CategoryDelegate
 from .inactivity import InactivityFilter, UnlockDialog
+from .synced_splitter import SyncedSplitter
 
 __all__ = [
     "MainWindow",
@@ -25,4 +26,5 @@ __all__ = [
     "DateDelegate",
     "CategoryDelegate",
     "DataTableSection",
+    "SyncedSplitter",
 ]
