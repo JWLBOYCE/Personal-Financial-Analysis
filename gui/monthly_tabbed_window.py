@@ -1,4 +1,6 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
+from .navigation_table_widget import NavigationTableWidget
+from .dashboard_tab import DashboardTab
 from .navigation_table_widget import (
     NavigationTableWidget,
     ORIGINAL_DESC_ROLE,
@@ -209,6 +211,7 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         self.resize(1000, 700)
         months = months or ["March 2024"]
         self._setup_ui(months)
+        self.current_month = months[0]
 
     def _setup_ui(self, months) -> None:
         self.tabs = QtWidgets.QTabWidget()
@@ -219,9 +222,14 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         toolbar.addAction(new_month_action)
         new_month_action.triggered.connect(self.add_new_month)
 
+        self.dashboard = DashboardTab()
+        self.tabs.addTab(self.dashboard, "Dashboard")
+
         for month in months:
             tab = MonthlyTab(month)
             self.tabs.addTab(tab, month)
+
+        self.tabs.currentChanged.connect(self._tab_changed)
 
     def add_new_month(self) -> None:
         """Create a new tab based on the most recent month's data."""
@@ -280,6 +288,15 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
 
         self.tabs.addTab(new_tab, name.strip())
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
+        self.current_month = name.strip()
+        self.dashboard.update_dashboard(self.current_month)
+
+
+    def _tab_changed(self, index: int) -> None:
+        if index == 0:
+            self.dashboard.update_dashboard(self.current_month)
+        else:
+            self.current_month = self.tabs.tabText(index)
 
 
 __all__ = ["MonthlyTabbedWindow", "MonthlyTab", "TableSection", "SummarySection"]
