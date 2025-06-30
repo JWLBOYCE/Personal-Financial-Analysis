@@ -1,5 +1,7 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
 import os
+
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
 import pandas as pd
 from .navigation_table_widget import NavigationTableWidget
 from .dashboard_tab import DashboardTab
@@ -264,8 +266,19 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         self.current_month = months[0]
 
     def _setup_ui(self, months) -> None:
+        main_widget = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(main_widget)
+        if DEMO_MODE:
+            banner = QtWidgets.QLabel("DEMO MODE ACTIVE")
+            banner.setAlignment(QtCore.Qt.AlignCenter)
+            banner.setStyleSheet(
+                "background-color: #c00; color: white; font-weight: bold; padding: 4px;"
+            )
+            layout.addWidget(banner)
+
         self.tabs = QtWidgets.QTabWidget()
-        self.setCentralWidget(self.tabs)
+        layout.addWidget(self.tabs)
+        self.setCentralWidget(main_widget)
 
         toolbar = self.addToolBar("Main")
         new_month_action = QtWidgets.QAction("New Month", self)
