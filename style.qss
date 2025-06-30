@@ -30,7 +30,6 @@ QHeaderView::section {
 /* Table styling */
 QTableWidget {
     gridline-color: #d0d0d0;
-    alternating-row-colors: true;
     background: #ffffff;
     alternate-background-color: #f2f2f2;
 }
