@@ -6,6 +6,7 @@ from .monthly_tabbed_window import MonthlyTabbedWindow
 from .dashboard_tab import DashboardTab
 from .recurring_tab import RecurringTab
 from .navigation_table_widget import NavigationTableWidget
+from .inactivity import InactivityFilter, UnlockDialog
 
 __all__ = [
     "MainWindow",
@@ -14,4 +15,6 @@ __all__ = [
     "DashboardTab",
     "RecurringTab",
     "NavigationTableWidget",
+    "InactivityFilter",
+    "UnlockDialog",
 ]
