@@ -3,6 +3,7 @@ import hashlib
 from dotenv import dotenv_values
 
 from .main_window import MainWindow
+from .monthly_tabbed_window import MonthlyTabbedWindow
 
 
 class LoginWindow(QtWidgets.QWidget):
@@ -35,7 +36,7 @@ class LoginWindow(QtWidgets.QWidget):
     def check_password(self):
         password = self.password_edit.text()
         if hashlib.sha256(password.encode()).hexdigest() == self.password_hash:
-            self.main_window = MainWindow()
+            self.main_window = MonthlyTabbedWindow()
             self.main_window.show()
             self.close()
         else:
