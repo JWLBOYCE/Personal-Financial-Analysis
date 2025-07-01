@@ -1,5 +1,6 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
 import sqlite3
+import sip
 
 from logic.month_manager import _ensure_db
 from config import get_db_path
@@ -48,7 +49,19 @@ class ReorderableScrollArea(QtWidgets.QScrollArea):
     # Helpers
     # ------------------------------------------------------------------
     def _sections(self) -> list[QtWidgets.QWidget]:
-        return [self.layout.itemAt(i).widget() for i in range(self.layout.count() - 1)]
+        layout = getattr(self, "layout", None)
+        if layout is None:
+            return []
+        try:
+            if sip.isdeleted(layout):
+                return []
+        except Exception:
+            return []
+        try:
+            count = layout.count()
+        except RuntimeError:
+            return []
+        return [layout.itemAt(i).widget() for i in range(count - 1)]
 
     def add_section(self, widget: QtWidgets.QWidget) -> None:
         widget.installEventFilter(self)
