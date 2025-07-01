@@ -61,3 +61,11 @@ CREATE TABLE IF NOT EXISTS monthly_entries (
     notes TEXT
 );
 
+-- Table for storing layout order of monthly sections
+CREATE TABLE IF NOT EXISTS layout_order (
+    month_id TEXT NOT NULL,
+    table_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    PRIMARY KEY (month_id, table_id)
+);
+
