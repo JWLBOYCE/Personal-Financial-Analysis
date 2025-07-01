@@ -452,6 +452,7 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         self.setWindowTitle("Personal Financial Analysis")
         self.resize(1000, 700)
         months = months or self._generate_default_months()
+        self._load_sidebar_state()
         self._setup_ui(months)
         self.current_month = months[0]
 
@@ -498,8 +499,14 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         dock.setWidget(self.month_list)
         dock.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures)
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, dock)
+        self.month_dock = dock
+        self.month_dock.setVisible(self.sidebar_visible)
 
         toolbar = self.addToolBar("Main")
+        toggle_action = QtWidgets.QAction("\u2630", self)
+        toggle_action.setToolTip("Toggle month sidebar")
+        toggle_action.triggered.connect(self.toggle_sidebar)
+        toolbar.addAction(toggle_action)
         new_month_action = QtWidgets.QAction("New Month", self)
         toolbar.addAction(new_month_action)
         new_month_action.triggered.connect(self.add_new_month)
@@ -571,6 +578,22 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         if 0 <= row < self.month_stack.count():
             self.month_stack.setCurrentIndex(row)
             self.current_month = self.month_list.item(row).text()
+
+    def toggle_sidebar(self) -> None:
+        """Show or hide the month sidebar."""
+        if self.month_dock.isVisible():
+            self.month_dock.hide()
+        else:
+            self.month_dock.show()
+        self._save_sidebar_state()
+
+    def _load_sidebar_state(self) -> None:
+        settings = QtCore.QSettings("PFA", "MainWindow")
+        self.sidebar_visible = settings.value("MonthsSidebarVisible", True, type=bool)
+
+    def _save_sidebar_state(self) -> None:
+        settings = QtCore.QSettings("PFA", "MainWindow")
+        settings.setValue("MonthsSidebarVisible", self.month_dock.isVisible())
 
     def add_new_month(self) -> None:
         """Create a new tab based on the most recent month's data."""
@@ -645,6 +668,7 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
             tab = self._unwrap_month_tab(widget)
             if hasattr(tab, "save_layout"):
                 tab.save_layout()
+        self._save_sidebar_state()
         super().closeEvent(event)
 
 
