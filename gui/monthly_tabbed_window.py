@@ -584,6 +584,9 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         self.tab_bar.addTab("Monthly Analysis")
         self.tabs.addTab(placeholder("Forecast"), "Forecast")
         self.tab_bar.addTab("Forecast")
+        from .data_upload_tab import DataUploadTab
+        self.tabs.addTab(DataUploadTab(), "Data")
+        self.tab_bar.addTab("Data")
 
         for month in months:
             tab = MonthlyTab(month)

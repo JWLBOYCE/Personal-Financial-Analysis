@@ -11,6 +11,7 @@ from .table_manager import TransactionTableManager
 from .delegates import AmountDelegate, DateDelegate, CategoryDelegate
 from .inactivity import InactivityFilter, UnlockDialog
 from .synced_splitter import SyncedSplitter
+from .data_upload_tab import DataUploadTab
 
 __all__ = [
     "MainWindow",
@@ -27,4 +28,5 @@ __all__ = [
     "CategoryDelegate",
     "DataTableSection",
     "SyncedSplitter",
+    "DataUploadTab",
 ]
