@@ -197,22 +197,22 @@ class SummarySection(QtWidgets.QGroupBox):
 class MonthlyTab(QtWidgets.QWidget):
     """Monthly view with draggable sections inside a scroll area."""
 
- def __init__(self, month_name: str) -> None:
-    super().__init__()
-    self.month_name = month_name
-    self.setObjectName(f"MonthlyTab_{month_name}")
+    def __init__(self, month_name: str) -> None:
+        super().__init__()
+        self.month_name = month_name
+        self.setObjectName(f"MonthlyTab_{month_name}")
 
-    self.setDockOptions(
-        QtWidgets.QMainWindow.AllowNestedDocks
-        | QtWidgets.QMainWindow.AnimatedDocks
-    )
+        self.setDockOptions(
+            QtWidgets.QMainWindow.AllowNestedDocks
+            | QtWidgets.QMainWindow.AnimatedDocks
+        )
 
-    # Central widget with secondary tabs
-    central = QtWidgets.QWidget()
-    central_layout = QtWidgets.QVBoxLayout(central)
-    self.page_tabs = QtWidgets.QTabWidget()
-    central_layout.addWidget(self.page_tabs)
-    self.setCentralWidget(central)
+        # Central widget with secondary tabs
+        central = QtWidgets.QWidget()
+        central_layout = QtWidgets.QVBoxLayout(central)
+        self.page_tabs = QtWidgets.QTabWidget()
+        central_layout.addWidget(self.page_tabs)
+        self.setCentralWidget(central)
 
     # ------------------------------------------------------------------
     # Overview Tab (with draggable scrollable layout)
@@ -221,7 +221,7 @@ class MonthlyTab(QtWidgets.QWidget):
     overview_layout = QtWidgets.QVBoxLayout(overview_page)
 
     self.dashboard_tab = DashboardTab()
-    scroll_area = ReorderableScrollArea(self.objectName() + "_area")
+    scroll_area = ReorderableScrollArea(self.objectName() + "_area", self.month_name)
     scroll_area.setWidget(self.dashboard_tab)
     scroll_area.setWidgetResizable(True)
 

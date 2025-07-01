@@ -1,11 +1,16 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
+import sqlite3
+
+from logic.month_manager import _ensure_db
+from config import get_db_path
 
 class ReorderableScrollArea(QtWidgets.QScrollArea):
     """Scroll area allowing drag-and-drop reordering of child widgets."""
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, month_id: str) -> None:
         super().__init__()
         self.setObjectName(name)
+        self.month_id = month_id
         self.setWidgetResizable(True)
         self.setAcceptDrops(True)
 
@@ -18,6 +23,26 @@ class ReorderableScrollArea(QtWidgets.QScrollArea):
 
         self._drag_start = QtCore.QPoint()
         self._drag_widget: QtWidgets.QWidget | None = None
+
+    # ------------------------------------------------------------------
+    # Database helpers
+    # ------------------------------------------------------------------
+    def _get_conn(self) -> sqlite3.Connection:
+        db_path = get_db_path()
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        _ensure_db(conn)
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS layout_order (
+                month_id TEXT NOT NULL,
+                table_id TEXT NOT NULL,
+                position INTEGER NOT NULL,
+                PRIMARY KEY (month_id, table_id)
+            )
+            """
+        )
+        return conn
 
     # ------------------------------------------------------------------
     # Helpers
@@ -89,13 +114,29 @@ class ReorderableScrollArea(QtWidgets.QScrollArea):
     # ------------------------------------------------------------------
     def save_order(self) -> None:
         order = [w.objectName() for w in self._sections()]
-        settings = QtCore.QSettings("PFA", "MonthlyLayout")
-        settings.setValue(self.objectName(), order)
+        conn = self._get_conn()
+        conn.execute(
+            "DELETE FROM layout_order WHERE month_id = ?",
+            (self.month_id,),
+        )
+        for pos, tid in enumerate(order):
+            conn.execute(
+                "INSERT INTO layout_order (month_id, table_id, position) VALUES (?, ?, ?)",
+                (self.month_id, tid, pos),
+            )
+        conn.commit()
+        conn.close()
 
     def load_order(self) -> None:
-        settings = QtCore.QSettings("PFA", "MonthlyLayout")
-        order = settings.value(self.objectName())
-        if not isinstance(order, list):
+        conn = self._get_conn()
+        cur = conn.execute(
+            "SELECT table_id FROM layout_order WHERE month_id = ? ORDER BY position",
+            (self.month_id,),
+        )
+        rows = cur.fetchall()
+        conn.close()
+        order = [row["table_id"] for row in rows]
+        if not order:
             return
         widgets = {w.objectName(): w for w in self._sections()}
         for name in order:
