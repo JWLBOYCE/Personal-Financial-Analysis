@@ -9,6 +9,7 @@ from .navigation_table_widget import (
     IS_RECURRING_ROLE,
 )
 from .table_manager import TransactionTableManager
+from .dashboard_tab import DashboardTab
 from datetime import datetime
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -204,7 +205,42 @@ class MonthlyTab(QtWidgets.QMainWindow):
             | QtWidgets.QMainWindow.AnimatedDocks
         )
         central = QtWidgets.QWidget()
+        central_layout = QtWidgets.QVBoxLayout(central)
+        self.page_tabs = QtWidgets.QTabWidget()
+        central_layout.addWidget(self.page_tabs)
         self.setCentralWidget(central)
+
+        # ------------------------------------------------------------------
+        # Secondary tabs within each month
+        # ------------------------------------------------------------------
+        overview_page = QtWidgets.QWidget()
+        ov_layout = QtWidgets.QVBoxLayout(overview_page)
+        self.dashboard_tab = DashboardTab()
+        ov_layout.addWidget(self.dashboard_tab)
+        self.page_tabs.addTab(overview_page, "Overview")
+
+        income_page = QtWidgets.QWidget()
+        income_layout = QtWidgets.QVBoxLayout(income_page)
+        income_label = QtWidgets.QLabel(f"Income Statement for {self.month_name}")
+        income_label.setAlignment(QtCore.Qt.AlignCenter)
+        income_layout.addWidget(income_label)
+        self.page_tabs.addTab(income_page, "Income Statement")
+
+        balance_page = QtWidgets.QWidget()
+        balance_layout = QtWidgets.QVBoxLayout(balance_page)
+        balance_label = QtWidgets.QLabel(f"Balance Sheet for {self.month_name}")
+        balance_label.setAlignment(QtCore.Qt.AlignCenter)
+        balance_layout.addWidget(balance_label)
+        self.page_tabs.addTab(balance_page, "Balance Sheet")
+
+        credit_page = QtWidgets.QWidget()
+        credit_layout = QtWidgets.QVBoxLayout(credit_page)
+        credit_label = QtWidgets.QLabel(f"Credit Card Report for {self.month_name}")
+        credit_label.setAlignment(QtCore.Qt.AlignCenter)
+        credit_layout.addWidget(credit_label)
+        self.page_tabs.addTab(credit_page, "Credit Card Report")
+
+        self.dashboard_tab.update_dashboard(self.month_name)
 
         def make_dock(title: str, widget: QtWidgets.QWidget, area: QtCore.Qt.DockWidgetArea) -> QtWidgets.QDockWidget:
             dock = QtWidgets.QDockWidget(title, self)
