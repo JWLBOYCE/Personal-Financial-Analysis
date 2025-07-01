@@ -9,6 +9,7 @@ from .navigation_table_widget import (
     IS_RECURRING_ROLE,
 )
 from .table_manager import TransactionTableManager
+from .reorderable_area import ReorderableScrollArea
 from datetime import datetime
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -192,31 +193,17 @@ class SummarySection(QtWidgets.QGroupBox):
         )
 
 
-class MonthlyTab(QtWidgets.QMainWindow):
-    """Dockable monthly view with movable panels."""
+class MonthlyTab(QtWidgets.QWidget):
+    """Monthly view with draggable sections inside a scroll area."""
 
     def __init__(self, month_name: str) -> None:
         super().__init__()
         self.month_name = month_name
         self.setObjectName(f"MonthlyTab_{month_name}")
-        self.setDockOptions(
-            QtWidgets.QMainWindow.AllowNestedDocks
-            | QtWidgets.QMainWindow.AnimatedDocks
-        )
-        central = QtWidgets.QWidget()
-        self.setCentralWidget(central)
 
-        def make_dock(title: str, widget: QtWidgets.QWidget, area: QtCore.Qt.DockWidgetArea) -> QtWidgets.QDockWidget:
-            dock = QtWidgets.QDockWidget(title, self)
-            dock.setObjectName(title.replace(" ", "") + "Dock")
-            dock.setWidget(widget)
-            dock.setAllowedAreas(QtCore.Qt.AllDockWidgetAreas)
-            dock.setFeatures(
-                QtWidgets.QDockWidget.DockWidgetMovable
-                | QtWidgets.QDockWidget.DockWidgetFloatable
-            )
-            self.addDockWidget(area, dock)
-            return dock
+        layout = QtWidgets.QVBoxLayout(self)
+        self.area = ReorderableScrollArea(self.objectName() + "_area")
+        layout.addWidget(self.area)
 
         sections_info = [
             ("Income Table", "income"),
@@ -288,48 +275,29 @@ class MonthlyTab(QtWidgets.QMainWindow):
         provisions_section = TableSection("Provisions Table")
         cc_classifier_section = TableSection("Credit Card Classifier Table")
 
-        dock_map = {
-            "Income Table": QtCore.Qt.LeftDockWidgetArea,
-            "Expenses Table": QtCore.Qt.LeftDockWidgetArea,
-            "Withdrawals Table": QtCore.Qt.LeftDockWidgetArea,
-            "Assets Table": QtCore.Qt.LeftDockWidgetArea,
-            "Liabilities Table": QtCore.Qt.LeftDockWidgetArea,
-            "Net Worth Table": QtCore.Qt.LeftDockWidgetArea,
-            "Provisions Table": QtCore.Qt.RightDockWidgetArea,
-            "Credit Card Classifier Table": QtCore.Qt.RightDockWidgetArea,
-            "Cash at Month End Table": QtCore.Qt.RightDockWidgetArea,
-            "Cash Crosscheck Table": QtCore.Qt.RightDockWidgetArea,
-            "Asset Allocation Table": QtCore.Qt.RightDockWidgetArea,
-        }
+        passive_group.setObjectName("passive_income")
+        aa_chart_group.setObjectName("asset_allocation_charts")
+        self.asset_table_section.setObjectName("asset_allocation_table")
+        provisions_section.setObjectName("provisions")
+        cc_classifier_section.setObjectName("credit_card_classifier")
 
-
-        make_dock("Passive Income", passive_group, QtCore.Qt.RightDockWidgetArea)
-        make_dock("Asset Allocation Charts", aa_chart_group, QtCore.Qt.RightDockWidgetArea)
-        make_dock("Asset Allocation Table", self.asset_table_section, QtCore.Qt.RightDockWidgetArea)
-        make_dock("Provisions Table", provisions_section, QtCore.Qt.RightDockWidgetArea)
-        make_dock("Credit Card Classifier", cc_classifier_section, QtCore.Qt.RightDockWidgetArea)
+        for sec in self.sections:
+            self.area.add_section(sec)
+        self.area.add_section(passive_group)
+        self.area.add_section(aa_chart_group)
+        self.area.add_section(self.asset_table_section)
+        self.area.add_section(provisions_section)
+        self.area.add_section(cc_classifier_section)
 
         self._load_layout()
 
     def _load_layout(self) -> None:
-        """Restore dock layout from settings."""
-        settings = QtCore.QSettings("PFA", "DockLayout")
-        settings.beginGroup(self.objectName())
-        geom = settings.value("geometry")
-        state = settings.value("state")
-        if isinstance(geom, QtCore.QByteArray):
-            self.restoreGeometry(geom)
-        if isinstance(state, QtCore.QByteArray):
-            self.restoreState(state)
-        settings.endGroup()
+        """Restore saved section order."""
+        self.area.load_order()
 
     def save_layout(self) -> None:
-        """Persist the current dock layout."""
-        settings = QtCore.QSettings("PFA", "DockLayout")
-        settings.beginGroup(self.objectName())
-        settings.setValue("geometry", self.saveGeometry())
-        settings.setValue("state", self.saveState())
-        settings.endGroup()
+        """Persist the current section order."""
+        self.area.save_order()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:  # type: ignore[override]
         self.save_layout()
