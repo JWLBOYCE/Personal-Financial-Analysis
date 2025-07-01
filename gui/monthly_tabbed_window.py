@@ -195,7 +195,7 @@ class SummarySection(QtWidgets.QGroupBox):
 
 
 
-class MonthlyTab(QtWidgets.QWidget):
+class MonthlyTab(QtWidgets.QMainWindow):
     """Monthly view with draggable sections inside a scroll area."""
 
     def __init__(self, month_name: str) -> None:
