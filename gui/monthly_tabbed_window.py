@@ -208,17 +208,22 @@ class MonthlyTab(QtWidgets.QWidget):
             | QtWidgets.QMainWindow.AnimatedDocks
         )
 
-    # Central widget with secondary tabs
+    # Central widget with secondary tabs (using QTabBar + QStackedWidget)
     central = QtWidgets.QWidget()
     central_layout = QtWidgets.QVBoxLayout(central)
-    # Use a QTabBar + QStackedWidget so pages are created once and
-    # simply shown/hidden when switching. This avoids destroying widgets
-    # on each tab change and keeps state intact.
+
+    # Create tab bar and stack
     self.page_tab_bar = QtWidgets.QTabBar(movable=False)
     self.page_stack = QtWidgets.QStackedWidget()
+
+    # Link tab bar to stacked widget
     self.page_tab_bar.currentChanged.connect(self.page_stack.setCurrentIndex)
+
+    # Add both to layout
     central_layout.addWidget(self.page_tab_bar)
     central_layout.addWidget(self.page_stack)
+
+    # Set as central widget
     self.setCentralWidget(central)
 
     # ------------------------------------------------------------------
@@ -228,7 +233,7 @@ class MonthlyTab(QtWidgets.QWidget):
     overview_layout = QtWidgets.QVBoxLayout(overview_page)
 
     self.dashboard_tab = DashboardTab()
-    scroll_area = ReorderableScrollArea(self.objectName() + "_area")
+    scroll_area = ReorderableScrollArea(self.objectName() + "_area", self.month_name)
     scroll_area.setWidget(self.dashboard_tab)
     scroll_area.setWidgetResizable(True)
 
