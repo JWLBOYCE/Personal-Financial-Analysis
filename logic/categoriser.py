@@ -12,16 +12,7 @@ import glob
 
 from PyQt5 import QtWidgets
 
-DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-DB_PATH = os.path.join(BASE_DIR, "demo", "demo_finance.db") if DEMO_MODE else os.path.join(BASE_DIR, "data", "finance.db")
-
-if DEMO_MODE and not os.path.exists(DB_PATH):
-    sql_path = os.path.join(BASE_DIR, "demo", "demo_finance.sql")
-    conn = sqlite3.connect(DB_PATH)
-    with open(sql_path, "r", encoding="utf-8") as f:
-        conn.executescript(f.read())
-    conn.close()
+from config import BASE_DIR, get_db_path
 SCHEMA_PATH = os.path.join(BASE_DIR, "schema.sql")
 
 
@@ -31,8 +22,9 @@ def _ensure_db(conn: sqlite3.Connection) -> None:
         conn.executescript(f.read())
 
 
-def _backup_db(db_path: str = DB_PATH) -> None:
+def _backup_db(db_path: str | None = None) -> None:
     """Create a timestamped backup of the database and keep only 5 recent."""
+    db_path = db_path or get_db_path()
     backup_dir = os.path.dirname(db_path)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup_name = f"backup_finance_{timestamp}.bak"
@@ -54,8 +46,8 @@ def _backup_db(db_path: str = DB_PATH) -> None:
 class Categoriser:
     """Classify transactions using stored mappings."""
 
-    def __init__(self, db_path: str = DB_PATH) -> None:
-        self.db_path = db_path
+    def __init__(self, db_path: str | None = None) -> None:
+        self.db_path = db_path or get_db_path()
         self.conn = sqlite3.connect(self.db_path)
         self.conn.row_factory = sqlite3.Row
         _ensure_db(self.conn)
@@ -152,7 +144,7 @@ from typing import Optional
 import tkinter as tk
 from tkinter import simpledialog
 
-DB_PATH = 'finance.db'
+DB_PATH = get_db_path()
 
 @dataclass
 class Transaction:
@@ -242,7 +234,8 @@ def _detect_recurring(conn: sqlite3.Connection, description: str, amount: float)
     return count >= 2
 
 
-def categorise_transaction(description: str, amount: float, db_path: str = DB_PATH) -> Transaction:
+def categorise_transaction(description: str, amount: float, db_path: str | None = None) -> Transaction:
+    db_path = db_path or get_db_path()
     conn = sqlite3.connect(db_path)
     try:
         _ensure_tables(conn)
@@ -266,7 +259,8 @@ def categorise_transaction(description: str, amount: float, db_path: str = DB_PA
         conn.close()
 
 
-def categorise_transactions(transactions: Iterable[tuple[str, float]], db_path: str = DB_PATH) -> list[Transaction]:
+def categorise_transactions(transactions: Iterable[tuple[str, float]], db_path: str | None = None) -> list[Transaction]:
+    db_path = db_path or get_db_path()
     """Categorise multiple transactions and backup the database."""
     results = []
     for desc, amt in transactions:

@@ -11,7 +11,8 @@ IS_RECURRING_ROLE = QtCore.Qt.UserRole + 1
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import sqlite3
-from logic.categoriser import DB_PATH, _ensure_db
+from logic.categoriser import _ensure_db
+from config import get_db_path
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -289,7 +290,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas.draw()
 
     def _get_conn(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(DB_PATH)
+        db_path = get_db_path()
+        conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
         _ensure_db(conn)
         return conn

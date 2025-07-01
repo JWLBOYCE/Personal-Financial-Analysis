@@ -10,17 +10,9 @@ from typing import List, Dict, Any, Optional
 
 import pandas as pd
 
-DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-ARCHIVE_DIR = os.path.join(BASE_DIR, "archived")
-DB_PATH = os.path.join(BASE_DIR, "demo", "demo_finance.db") if DEMO_MODE else os.path.join(BASE_DIR, "data", "finance.db")
+from config import BASE_DIR, get_db_path
 
-if DEMO_MODE and not os.path.exists(DB_PATH):
-    sql_path = os.path.join(BASE_DIR, "demo", "demo_finance.sql")
-    conn = sqlite3.connect(DB_PATH)
-    with open(sql_path, "r", encoding="utf-8") as f:
-        conn.executescript(f.read())
-    conn.close()
+ARCHIVE_DIR = os.path.join(BASE_DIR, "archived")
 
 
 def _find_column(columns: List[str], names: List[str]) -> Optional[str]:
@@ -85,7 +77,8 @@ def _archive(file_path: str, file_type: str) -> None:
     archived_path = os.path.join(ARCHIVE_DIR, archived_name)
     os.replace(file_path, archived_path)
 
-    conn = sqlite3.connect(DB_PATH)
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
     conn.execute(
         "CREATE TABLE IF NOT EXISTS import_logs (id INTEGER PRIMARY KEY, file_name TEXT, date TEXT, type TEXT)"
     )

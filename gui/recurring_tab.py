@@ -4,7 +4,8 @@ from PyQt5 import QtWidgets, QtCore
 import sqlite3
 from datetime import datetime
 
-from logic.month_manager import DB_PATH, _ensure_db
+from logic.month_manager import _ensure_db
+from config import get_db_path
 from .navigation_table_widget import NavigationTableWidget
 
 
@@ -41,7 +42,8 @@ class RecurringTab(QtWidgets.QWidget):
     # Database helpers
     # ------------------------------------------------------------------
     def _get_conn(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(DB_PATH)
+        db_path = get_db_path()
+        conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
         _ensure_db(conn)
         return conn

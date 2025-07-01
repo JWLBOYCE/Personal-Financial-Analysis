@@ -20,9 +20,10 @@ Personal Financial Analysis is a desktop application for tracking and analysing 
 ## Demo Mode
 
 The project ships with a small set of safe example data in the `demo/` folder.
-Set `DEMO_MODE=true` in the `.env` file to run the application using the demo
-CSV and database. If `demo/demo_finance.db` is missing the application will
-create it automatically from `demo/demo_finance.sql`.
+Set `DEMO_MODE=true` in the `.env` file to start in demo mode or toggle it at
+runtime from the **View → Toggle Demo Mode** menu option. When enabled the
+application uses the demo CSV and database. If `demo/demo_finance.db` is missing
+it will be created automatically from `demo/demo_finance.sql`.
 
 ## Installation
 

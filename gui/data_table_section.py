@@ -4,7 +4,8 @@ import sqlite3
 from PyQt5 import QtWidgets, QtCore
 
 from .monthly_tabbed_window import TableSection
-from logic.month_manager import DB_PATH, _ensure_db
+from logic.month_manager import _ensure_db
+from config import get_db_path
 
 
 class DataTableSection(TableSection):
@@ -25,7 +26,8 @@ class DataTableSection(TableSection):
     # Database helpers
     # ------------------------------------------------------------------
     def _get_conn(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(DB_PATH)
+        db_path = get_db_path()
+        conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
         _ensure_db(conn)
         conn.execute(
