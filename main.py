@@ -1,16 +1,19 @@
 """Application entry point for Personal Financial Analysis."""
 
-from PyQt5 import QtWidgets
-from PyQt5 import QtGui
-from dotenv import dotenv_values
-import hashlib
-import os
-
-from gui import LoginWindow, InactivityFilter
+from PyQt5.QtWidgets import QApplication
+import sys
 
 
-def main():
-    app = QtWidgets.QApplication([])
+def main() -> None:
+    """Launch the application after creating ``QApplication``."""
+
+    app = QApplication(sys.argv)
+
+    from PyQt5 import QtWidgets, QtGui
+    from dotenv import dotenv_values
+    import hashlib
+    import os
+    from gui import LoginWindow, InactivityFilter
 
     # Apply global stylesheet if available
     qss_path = os.path.join(os.path.dirname(__file__), "style.qss")
