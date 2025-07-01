@@ -6,16 +6,7 @@ import os
 import sqlite3
 from datetime import datetime
 
-DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-DB_PATH = os.path.join(BASE_DIR, "demo", "demo_finance.db") if DEMO_MODE else os.path.join(BASE_DIR, "data", "finance.db")
-
-if DEMO_MODE and not os.path.exists(DB_PATH):
-    sql_path = os.path.join(BASE_DIR, "demo", "demo_finance.sql")
-    conn = sqlite3.connect(DB_PATH)
-    with open(sql_path, "r", encoding="utf-8") as f:
-        conn.executescript(f.read())
-    conn.close()
+from config import BASE_DIR, get_db_path
 SCHEMA_PATH = os.path.join(BASE_DIR, "schema.sql")
 
 
@@ -35,7 +26,7 @@ def duplicate_previous_month(
     name: str,
     start_date: str,
     end_date: str,
-    db_path: str = DB_PATH,
+    db_path: str | None = None,
 ) -> int:
     """Create a new month by duplicating the last month's recurring transactions.
 
@@ -45,6 +36,7 @@ def duplicate_previous_month(
     reset implicitly as no balances are carried over.
     """
 
+    db_path = db_path or get_db_path()
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     _ensure_db(conn)

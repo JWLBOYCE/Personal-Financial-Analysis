@@ -3,7 +3,8 @@ from __future__ import annotations
 from PyQt5 import QtWidgets, QtCore, QtGui
 import sqlite3
 
-from logic.month_manager import DB_PATH, _ensure_db
+from logic.month_manager import _ensure_db
+from config import get_db_path
 
 
 class AmountDelegate(QtWidgets.QStyledItemDelegate):
@@ -48,7 +49,8 @@ class CategoryDelegate(QtWidgets.QStyledItemDelegate):
     """Delegate providing a dropdown of categories."""
 
     def _categories(self):
-        conn = sqlite3.connect(DB_PATH)
+        db_path = get_db_path()
+        conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
         _ensure_db(conn)
         cur = conn.execute("SELECT name FROM categories ORDER BY name")

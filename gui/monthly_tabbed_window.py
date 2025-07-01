@@ -1,7 +1,6 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
-import os
 
-DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+from config import DEMO_MODE
 import pandas as pd
 from .navigation_table_widget import (
     NavigationTableWidget,
@@ -451,10 +450,27 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         super().__init__()
         self.setWindowTitle("Personal Financial Analysis")
         self.resize(1000, 700)
+        self.demo_mode = DEMO_MODE
+        self._create_menu()
         months = months or self._generate_default_months()
         self._load_sidebar_state()
         self._setup_ui(months)
         self.current_month = months[0]
+
+    def _create_menu(self) -> None:
+        menubar = self.menuBar()
+        view_menu = menubar.addMenu("View")
+        self.demo_action = QtWidgets.QAction("Toggle Demo Mode", self, checkable=True)
+        self.demo_action.setChecked(self.demo_mode)
+        self.demo_action.triggered.connect(self._toggle_demo_mode)
+        view_menu.addAction(self.demo_action)
+
+    def _toggle_demo_mode(self, checked: bool) -> None:
+        self.demo_mode = checked
+        import config
+        config.DEMO_MODE = checked
+        self.demo_banner.setVisible(checked)
+        self.demo_action.setChecked(checked)
 
     def _generate_default_months(self):
         """Return a list of upcoming months for the sidebar."""
@@ -465,13 +481,13 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
     def _setup_ui(self, months) -> None:
         main_widget = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(main_widget)
-        if DEMO_MODE:
-            banner = QtWidgets.QLabel("DEMO MODE ACTIVE")
-            banner.setAlignment(QtCore.Qt.AlignCenter)
-            banner.setStyleSheet(
-                "background-color: #c00; color: white; font-weight: bold; padding: 4px;"
-            )
-            layout.addWidget(banner)
+        self.demo_banner = QtWidgets.QLabel("DEMO MODE ACTIVE")
+        self.demo_banner.setAlignment(QtCore.Qt.AlignCenter)
+        self.demo_banner.setStyleSheet(
+            "background-color: #c00; color: white; font-weight: bold; padding: 4px;"
+        )
+        layout.addWidget(self.demo_banner)
+        self.demo_banner.setVisible(self.demo_mode)
 
         # Central stacked area for monthly views
         self.month_stack = QtWidgets.QStackedWidget()
