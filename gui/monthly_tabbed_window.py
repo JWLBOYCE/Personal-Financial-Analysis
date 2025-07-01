@@ -477,8 +477,8 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         layout.addWidget(self.month_stack)
 
         self.tabs = QtWidgets.QTabWidget()
-        # Tab labels in dark text for high contrast
-        self.tabs.tabBar().setStyleSheet("QTabBar::tab{color:#111;}")
+        # Hide the built-in tab bar and use a custom one in the toolbar
+        self.tabs.tabBar().hide()
         layout.addWidget(self.tabs)
 
         layout.setStretch(layout.indexOf(self.month_stack), 1)
@@ -502,7 +502,20 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         toolbar = self.addToolBar("Main")
         new_month_action = QtWidgets.QAction("New Month", self)
         toolbar.addAction(new_month_action)
+
+        # Custom tab bar placed beside the New Month button
+        self.tab_bar = QtWidgets.QTabBar(movable=False)
+        self.tab_bar.setUsesScrollButtons(True)
+        self.tab_bar.setElideMode(QtCore.Qt.ElideNone)
+        self.tab_bar.setExpanding(False)
+        self.tab_bar.setStyleSheet(
+            "QTabBar::tab { background:white; color:black; padding:4px 8px; }"
+            "QTabBar::tab:selected { font-weight:bold; }"
+        )
+        toolbar.addWidget(self.tab_bar)
+
         new_month_action.triggered.connect(self.add_new_month)
+        self.tab_bar.currentChanged.connect(self.tabs.setCurrentIndex)
 
         # ------------------------------------------------------------------
         # Static top-level tabs
@@ -517,6 +530,7 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
 
         current = self._wrap_month_tab(MonthlyTab(months[0])) if months else QtWidgets.QWidget()
         self.tabs.addTab(current, "Current Month")
+        self.tab_bar.addTab("Current Month")
 
         last = (
             self._wrap_month_tab(MonthlyTab(months[1]))
@@ -524,13 +538,20 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
             else QtWidgets.QWidget()
         )
         self.tabs.addTab(last, "Last Month")
+        self.tab_bar.addTab("Last Month")
 
         self.tabs.addTab(placeholder("Credit Card Analysis"), "Credit Card Analysis")
+        self.tab_bar.addTab("Credit Card Analysis")
         self.tabs.addTab(placeholder("Income Statement Tracker"), "Income Statement Tracker")
+        self.tab_bar.addTab("Income Statement Tracker")
         self.tabs.addTab(placeholder("Balance Sheet Tracker"), "Balance Sheet Tracker")
+        self.tab_bar.addTab("Balance Sheet Tracker")
         self.tabs.addTab(placeholder("Cashflow Statement"), "Cashflow Statement")
+        self.tab_bar.addTab("Cashflow Statement")
         self.tabs.addTab(placeholder("Monthly Analysis"), "Monthly Analysis")
+        self.tab_bar.addTab("Monthly Analysis")
         self.tabs.addTab(placeholder("Forecast"), "Forecast")
+        self.tab_bar.addTab("Forecast")
 
         for month in months:
             tab = MonthlyTab(month)
@@ -538,6 +559,7 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
             self.month_stack.addWidget(wrapper)
 
         self.month_stack.setCurrentIndex(0)
+        self.tab_bar.setCurrentIndex(0)
 
     def _wrap_month_tab(self, tab: QtWidgets.QWidget) -> QtWidgets.QScrollArea:
         """Return a scroll area containing the given monthly tab."""
