@@ -15,11 +15,14 @@ class ReorderableScrollArea(QtWidgets.QScrollArea):
         self.setWidgetResizable(True)
         self.setAcceptDrops(True)
 
+        # Keep this container alive for the lifetime of the scroll area so the
+        # layout is not destroyed when changing widgets.
         self.container = QtWidgets.QWidget()
         self._layout = QtWidgets.QVBoxLayout(self.container)
         self._layout.setContentsMargins(0, 0, 0, 0)
         self._layout.setSpacing(8)
         self._layout.addStretch()
+        # Set the container as the scroll area's widget after the layout is ready.
         self.setWidget(self.container)
 
         self._drag_start = QtCore.QPoint()
@@ -64,6 +67,10 @@ class ReorderableScrollArea(QtWidgets.QScrollArea):
         return [layout.itemAt(i).widget() for i in range(count - 1)]
 
     def add_section(self, widget: QtWidgets.QWidget) -> None:
+        """Insert a new widget section if the layout is valid."""
+        if sip.isdeleted(self._layout):
+            print("Layout deleted; skipping add_section.")
+            return
         widget.installEventFilter(self)
         self._layout.insertWidget(self._layout.count() - 1, widget)
 
