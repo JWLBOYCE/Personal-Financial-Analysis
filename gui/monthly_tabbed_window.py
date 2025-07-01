@@ -194,24 +194,31 @@ class SummarySection(QtWidgets.QGroupBox):
         )
 
 
+
 class MonthlyTab(QtWidgets.QWidget):
     """Monthly view with draggable sections inside a scroll area."""
 
- def __init__(self, month_name: str) -> None:
-    super().__init__()
-    self.month_name = month_name
-    self.setObjectName(f"MonthlyTab_{month_name}")
+    def __init__(self, month_name: str) -> None:
+        super().__init__()
+        self.month_name = month_name
+        self.setObjectName(f"MonthlyTab_{month_name}")
 
-    self.setDockOptions(
-        QtWidgets.QMainWindow.AllowNestedDocks
-        | QtWidgets.QMainWindow.AnimatedDocks
-    )
+        self.setDockOptions(
+            QtWidgets.QMainWindow.AllowNestedDocks
+            | QtWidgets.QMainWindow.AnimatedDocks
+        )
 
     # Central widget with secondary tabs
     central = QtWidgets.QWidget()
     central_layout = QtWidgets.QVBoxLayout(central)
-    self.page_tabs = QtWidgets.QTabWidget()
-    central_layout.addWidget(self.page_tabs)
+    # Use a QTabBar + QStackedWidget so pages are created once and
+    # simply shown/hidden when switching. This avoids destroying widgets
+    # on each tab change and keeps state intact.
+    self.page_tab_bar = QtWidgets.QTabBar(movable=False)
+    self.page_stack = QtWidgets.QStackedWidget()
+    self.page_tab_bar.currentChanged.connect(self.page_stack.setCurrentIndex)
+    central_layout.addWidget(self.page_tab_bar)
+    central_layout.addWidget(self.page_stack)
     self.setCentralWidget(central)
 
     # ------------------------------------------------------------------
@@ -226,7 +233,8 @@ class MonthlyTab(QtWidgets.QWidget):
     scroll_area.setWidgetResizable(True)
 
     overview_layout.addWidget(scroll_area)
-    self.page_tabs.addTab(overview_page, "Overview")
+    self.page_stack.addWidget(overview_page)
+    self.page_tab_bar.addTab("Overview")
 
     # ------------------------------------------------------------------
     # Secondary Tabs
@@ -236,21 +244,24 @@ class MonthlyTab(QtWidgets.QWidget):
     income_label = QtWidgets.QLabel(f"Income Statement for {self.month_name}")
     income_label.setAlignment(QtCore.Qt.AlignCenter)
     income_layout.addWidget(income_label)
-    self.page_tabs.addTab(income_page, "Income Statement")
+    self.page_stack.addWidget(income_page)
+    self.page_tab_bar.addTab("Income Statement")
 
     balance_page = QtWidgets.QWidget()
     balance_layout = QtWidgets.QVBoxLayout(balance_page)
     balance_label = QtWidgets.QLabel(f"Balance Sheet for {self.month_name}")
     balance_label.setAlignment(QtCore.Qt.AlignCenter)
     balance_layout.addWidget(balance_label)
-    self.page_tabs.addTab(balance_page, "Balance Sheet")
+    self.page_stack.addWidget(balance_page)
+    self.page_tab_bar.addTab("Balance Sheet")
 
     credit_page = QtWidgets.QWidget()
     credit_layout = QtWidgets.QVBoxLayout(credit_page)
     credit_label = QtWidgets.QLabel(f"Credit Card Report for {self.month_name}")
     credit_label.setAlignment(QtCore.Qt.AlignCenter)
     credit_layout.addWidget(credit_label)
-    self.page_tabs.addTab(credit_page, "Credit Card Report")
+    self.page_stack.addWidget(credit_page)
+    self.page_tab_bar.addTab("Credit Card Report")
 
     # Update the dashboard with selected month
     self.dashboard_tab.update_dashboard(self.month_name)
@@ -268,91 +279,91 @@ class MonthlyTab(QtWidgets.QWidget):
         self.addDockWidget(area, dock)
         return dock
 
-        sections_info = [
-            ("Income Table", "income"),
-            ("Expenses Table", "expenses"),
-            ("Withdrawals Table", "withdrawals"),
-            ("Assets Table", "assets"),
-            ("Liabilities Table", "liabilities"),
-            ("Provisions Table", "provisions"),
-            ("Credit Card Classifier Table", "credit_card"),
-            ("Cash at Month End Table", "cash_end"),
-            ("Cash Crosscheck Table", "cash_crosscheck"),
-            ("Net Worth Table", "net_worth"),
-            ("Asset Allocation Table", "asset_allocation"),
-        ]
+    sections_info = [
+        ("Income Table", "income"),
+        ("Expenses Table", "expenses"),
+        ("Withdrawals Table", "withdrawals"),
+        ("Assets Table", "assets"),
+        ("Liabilities Table", "liabilities"),
+        ("Provisions Table", "provisions"),
+        ("Credit Card Classifier Table", "credit_card"),
+        ("Cash at Month End Table", "cash_end"),
+        ("Cash Crosscheck Table", "cash_crosscheck"),
+        ("Net Worth Table", "net_worth"),
+        ("Asset Allocation Table", "asset_allocation"),
+    ]
 
-        self.sections = [DataTableSection(title, key, self.month_name) for title, key in sections_info]
-        for section in self.sections:
-            section.set_last_classified_row(-1)
+    self.sections = [DataTableSection(title, key, self.month_name) for title, key in sections_info]
+    for section in self.sections:
+        section.set_last_classified_row(-1)
 
-        income_section = self.sections[0]
+    income_section = self.sections[0]
 
-        passive_group = QtWidgets.QGroupBox("Passive Income")
-        passive_group.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
-        )
-        passive_layout = QtWidgets.QVBoxLayout(passive_group)
-        self.passive_fig = Figure(figsize=(4, 3))
-        self.passive_canvas = FigureCanvas(self.passive_fig)
-        policy = QtWidgets.QSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
-        )
-        self.passive_canvas.setSizePolicy(policy)
-        passive_layout.addWidget(self.passive_canvas)
-        passive_layout.setStretch(0, 1)
+    passive_group = QtWidgets.QGroupBox("Passive Income")
+    passive_group.setSizePolicy(
+        QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+    )
+    passive_layout = QtWidgets.QVBoxLayout(passive_group)
+    self.passive_fig = Figure(figsize=(4, 3))
+    self.passive_canvas = FigureCanvas(self.passive_fig)
+    policy = QtWidgets.QSizePolicy(
+        QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+    )
+    self.passive_canvas.setSizePolicy(policy)
+    passive_layout.addWidget(self.passive_canvas)
+    passive_layout.setStretch(0, 1)
 
-        income_section.table.cellChanged.connect(lambda *_: self.update_passive_chart())
-        income_section.table.model().rowsInserted.connect(lambda *_: self.update_passive_chart())
-        income_section.table.model().rowsRemoved.connect(lambda *_: self.update_passive_chart())
+    income_section.table.cellChanged.connect(lambda *_: self.update_passive_chart())
+    income_section.table.model().rowsInserted.connect(lambda *_: self.update_passive_chart())
+    income_section.table.model().rowsRemoved.connect(lambda *_: self.update_passive_chart())
 
-        aa_chart_group = QtWidgets.QGroupBox("Asset Allocation Pie Charts")
-        aa_chart_group.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
-        )
-        aa_chart_layout = QtWidgets.QHBoxLayout(aa_chart_group)
-        self.target_fig = Figure(figsize=(3, 3))
-        self.target_canvas = FigureCanvas(self.target_fig)
-        self.target_canvas.setSizePolicy(policy)
-        self.actual_fig = Figure(figsize=(3, 3))
-        self.actual_canvas = FigureCanvas(self.actual_fig)
-        self.actual_canvas.setSizePolicy(policy)
-        aa_chart_layout.addWidget(self.target_canvas)
-        aa_chart_layout.addWidget(self.actual_canvas)
-        aa_chart_layout.setStretch(0, 1)
-        aa_chart_layout.setStretch(1, 1)
+    aa_chart_group = QtWidgets.QGroupBox("Asset Allocation Pie Charts")
+    aa_chart_group.setSizePolicy(
+        QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+    )
+    aa_chart_layout = QtWidgets.QHBoxLayout(aa_chart_group)
+    self.target_fig = Figure(figsize=(3, 3))
+    self.target_canvas = FigureCanvas(self.target_fig)
+    self.target_canvas.setSizePolicy(policy)
+    self.actual_fig = Figure(figsize=(3, 3))
+    self.actual_canvas = FigureCanvas(self.actual_fig)
+    self.actual_canvas.setSizePolicy(policy)
+    aa_chart_layout.addWidget(self.target_canvas)
+    aa_chart_layout.addWidget(self.actual_canvas)
+    aa_chart_layout.setStretch(0, 1)
+    aa_chart_layout.setStretch(1, 1)
 
 
-        self.asset_table_section = TableSection("Asset Allocation Table")
-        self.asset_table_section.manager.set_headers([
-            "Asset Class",
-            "Target",
-            "Actual",
-        ])
-        table = self.asset_table_section.table
-        table.cellChanged.connect(lambda *_: self.update_asset_charts())
-        table.model().rowsInserted.connect(lambda *_: self.update_asset_charts())
-        table.model().rowsRemoved.connect(lambda *_: self.update_asset_charts())
-        self.update_asset_charts()
+    self.asset_table_section = TableSection("Asset Allocation Table")
+    self.asset_table_section.manager.set_headers([
+        "Asset Class",
+        "Target",
+        "Actual",
+    ])
+    table = self.asset_table_section.table
+    table.cellChanged.connect(lambda *_: self.update_asset_charts())
+    table.model().rowsInserted.connect(lambda *_: self.update_asset_charts())
+    table.model().rowsRemoved.connect(lambda *_: self.update_asset_charts())
+    self.update_asset_charts()
 
-        provisions_section = TableSection("Provisions Table")
-        cc_classifier_section = TableSection("Credit Card Classifier Table")
+    provisions_section = TableSection("Provisions Table")
+    cc_classifier_section = TableSection("Credit Card Classifier Table")
 
-        passive_group.setObjectName("passive_income")
-        aa_chart_group.setObjectName("asset_allocation_charts")
-        self.asset_table_section.setObjectName("asset_allocation_table")
-        provisions_section.setObjectName("provisions")
-        cc_classifier_section.setObjectName("credit_card_classifier")
+    passive_group.setObjectName("passive_income")
+    aa_chart_group.setObjectName("asset_allocation_charts")
+    self.asset_table_section.setObjectName("asset_allocation_table")
+    provisions_section.setObjectName("provisions")
+    cc_classifier_section.setObjectName("credit_card_classifier")
 
-        for sec in self.sections:
-            self.area.add_section(sec)
-        self.area.add_section(passive_group)
-        self.area.add_section(aa_chart_group)
-        self.area.add_section(self.asset_table_section)
-        self.area.add_section(provisions_section)
-        self.area.add_section(cc_classifier_section)
+    for sec in self.sections:
+        self.area.add_section(sec)
+    self.area.add_section(passive_group)
+    self.area.add_section(aa_chart_group)
+    self.area.add_section(self.asset_table_section)
+    self.area.add_section(provisions_section)
+    self.area.add_section(cc_classifier_section)
 
-        self._load_layout()
+    self._load_layout()
 
     def _load_layout(self) -> None:
         """Restore saved section order."""
