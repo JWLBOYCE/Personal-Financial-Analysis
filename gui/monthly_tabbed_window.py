@@ -525,6 +525,14 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         toolbar.addAction(toggle_action)
         new_month_action = QtWidgets.QAction("New Month", self)
         toolbar.addAction(new_month_action)
+        self.new_month_btn = toolbar.widgetForAction(new_month_action)
+        self.new_month_btn.setStyleSheet(
+            "QToolButton { background:white; color:black; padding:4px 8px; border:none; }"
+            "QToolButton:hover { background:#e0e0e0; }"
+        )
+        spacer = QtWidgets.QWidget()
+        spacer.setFixedWidth(8)
+        toolbar.addWidget(spacer)
 
         # Custom tab bar placed beside the New Month button
         self.tab_bar = QtWidgets.QTabBar(movable=False)
@@ -536,6 +544,7 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
             "QTabBar::tab:selected { font-weight:bold; }"
         )
         toolbar.addWidget(self.tab_bar)
+        self.new_month_btn.setFont(self.tab_bar.font())
 
         new_month_action.triggered.connect(self.add_new_month)
         self.tab_bar.currentChanged.connect(self.tabs.setCurrentIndex)
