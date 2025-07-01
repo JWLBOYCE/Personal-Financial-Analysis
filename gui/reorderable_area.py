@@ -16,10 +16,10 @@ class ReorderableScrollArea(QtWidgets.QScrollArea):
         self.setAcceptDrops(True)
 
         self.container = QtWidgets.QWidget()
-        self.layout = QtWidgets.QVBoxLayout(self.container)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.layout.setSpacing(8)
-        self.layout.addStretch()
+        self._layout = QtWidgets.QVBoxLayout(self.container)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setSpacing(8)
+        self._layout.addStretch()
         self.setWidget(self.container)
 
         self._drag_start = QtCore.QPoint()
@@ -49,7 +49,7 @@ class ReorderableScrollArea(QtWidgets.QScrollArea):
     # Helpers
     # ------------------------------------------------------------------
     def _sections(self) -> list[QtWidgets.QWidget]:
-        layout = getattr(self, "layout", None)
+        layout = getattr(self, "_layout", None)
         if layout is None:
             return []
         try:
@@ -65,7 +65,7 @@ class ReorderableScrollArea(QtWidgets.QScrollArea):
 
     def add_section(self, widget: QtWidgets.QWidget) -> None:
         widget.installEventFilter(self)
-        self.layout.insertWidget(self.layout.count() - 1, widget)
+        self._layout.insertWidget(self._layout.count() - 1, widget)
 
     def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
         if obj in self._sections():
@@ -109,8 +109,8 @@ class ReorderableScrollArea(QtWidgets.QScrollArea):
         if not event.mimeData().hasFormat("application/x-section") or self._drag_widget is None:
             return
         index = self._index_at(event.pos())
-        self.layout.removeWidget(self._drag_widget)
-        self.layout.insertWidget(index, self._drag_widget)
+        self._layout.removeWidget(self._drag_widget)
+        self._layout.insertWidget(index, self._drag_widget)
         self._drag_widget = None
         self.save_order()
         event.acceptProposedAction()
@@ -120,7 +120,7 @@ class ReorderableScrollArea(QtWidgets.QScrollArea):
             rect = widget.geometry()
             if pos.y() < rect.center().y():
                 return i
-        return self.layout.count() - 1
+        return self._layout.count() - 1
 
     # ------------------------------------------------------------------
     # Persistence
@@ -155,8 +155,8 @@ class ReorderableScrollArea(QtWidgets.QScrollArea):
         for name in order:
             w = widgets.get(name)
             if w is not None:
-                self.layout.removeWidget(w)
-                self.layout.insertWidget(self.layout.count() - 1, w)
+                self._layout.removeWidget(w)
+                self._layout.insertWidget(self._layout.count() - 1, w)
 
 
 __all__ = ['ReorderableScrollArea']

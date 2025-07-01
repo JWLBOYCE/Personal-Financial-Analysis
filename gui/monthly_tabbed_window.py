@@ -232,12 +232,16 @@ class MonthlyTab(QtWidgets.QMainWindow):
         overview_page = QtWidgets.QWidget()
         overview_layout = QtWidgets.QVBoxLayout(overview_page)
 
+        # 1. Create dashboard tab
         self.dashboard_tab = DashboardTab()
-        scroll_area = ReorderableScrollArea(self.objectName() + "_area", self.month_name)
-        scroll_area.setWidget(self.dashboard_tab)
-        scroll_area.setWidgetResizable(True)
-
-        overview_layout.addWidget(scroll_area)
+        # 2. Create the reorderable scroll area
+        self.area = ReorderableScrollArea(self.objectName() + "_area", self.month_name)
+        # 3. Set the dashboard as its widget
+        self.area.setWidget(self.dashboard_tab)
+        self.area.setWidgetResizable(True)
+        # 4. Add the area to the overview layout
+        overview_layout.addWidget(self.area)
+        # 5. Add overview_page to stack and tab bar
         self.page_stack.addWidget(overview_page)
         self.page_tab_bar.addTab("Overview")
 
@@ -368,6 +372,7 @@ class MonthlyTab(QtWidgets.QMainWindow):
         provisions_section.setObjectName("provisions")
         cc_classifier_section.setObjectName("credit_card_classifier")
 
+        # 6. Add sections to area (after overview_page is added to stack)
         for sec in self.sections:
             self.area.add_section(sec)
         self.area.add_section(passive_group)
