@@ -1,14 +1,10 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
 import hashlib
-import base64
+import os
 from dotenv import dotenv_values
 
 from .monthly_tabbed_window import MonthlyTabbedWindow
 
-WELCOME_IMAGE_B64 = (
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQA"
-    "AAAASUVORK5CYII="
-)
 
 
 class LoginWindow(QtWidgets.QWidget):
@@ -33,8 +29,10 @@ class LoginWindow(QtWidgets.QWidget):
 
         # Welcome image
         image_label = QtWidgets.QLabel()
-        pixmap = QtGui.QPixmap()
-        pixmap.loadFromData(base64.b64decode(WELCOME_IMAGE_B64))
+        img_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "welcome.png")
+        pixmap = QtGui.QPixmap(img_path)
+        if not pixmap.isNull():
+            pixmap = pixmap.scaledToWidth(300, QtCore.Qt.SmoothTransformation)
         image_label.setPixmap(pixmap)
         image_label.setAlignment(QtCore.Qt.AlignCenter)
         layout.addWidget(image_label)
