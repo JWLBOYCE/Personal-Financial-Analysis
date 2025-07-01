@@ -16,6 +16,7 @@ class DataTableSection(TableSection):
     def __init__(self, title: str, key: str, month: str) -> None:
         super().__init__(title)
         self.key = key
+        self.setObjectName(key)
         self.month = month
         self.table.cellChanged.connect(self._item_changed)
         self.table.model().rowsInserted.connect(self._rows_inserted)

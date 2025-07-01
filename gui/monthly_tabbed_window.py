@@ -10,6 +10,7 @@ from .navigation_table_widget import (
 )
 from .table_manager import TransactionTableManager
 from .dashboard_tab import DashboardTab
+from .reorderable_area import ReorderableScrollArea
 from datetime import datetime
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -193,66 +194,79 @@ class SummarySection(QtWidgets.QGroupBox):
         )
 
 
-class MonthlyTab(QtWidgets.QMainWindow):
-    """Dockable monthly view with movable panels."""
+class MonthlyTab(QtWidgets.QWidget):
+    """Monthly view with draggable sections inside a scroll area."""
 
-    def __init__(self, month_name: str) -> None:
-        super().__init__()
-        self.month_name = month_name
-        self.setObjectName(f"MonthlyTab_{month_name}")
-        self.setDockOptions(
-            QtWidgets.QMainWindow.AllowNestedDocks
-            | QtWidgets.QMainWindow.AnimatedDocks
+ def __init__(self, month_name: str) -> None:
+    super().__init__()
+    self.month_name = month_name
+    self.setObjectName(f"MonthlyTab_{month_name}")
+
+    self.setDockOptions(
+        QtWidgets.QMainWindow.AllowNestedDocks
+        | QtWidgets.QMainWindow.AnimatedDocks
+    )
+
+    # Central widget with secondary tabs
+    central = QtWidgets.QWidget()
+    central_layout = QtWidgets.QVBoxLayout(central)
+    self.page_tabs = QtWidgets.QTabWidget()
+    central_layout.addWidget(self.page_tabs)
+    self.setCentralWidget(central)
+
+    # ------------------------------------------------------------------
+    # Overview Tab (with draggable scrollable layout)
+    # ------------------------------------------------------------------
+    overview_page = QtWidgets.QWidget()
+    overview_layout = QtWidgets.QVBoxLayout(overview_page)
+
+    self.dashboard_tab = DashboardTab()
+    scroll_area = ReorderableScrollArea(self.objectName() + "_area")
+    scroll_area.setWidget(self.dashboard_tab)
+    scroll_area.setWidgetResizable(True)
+
+    overview_layout.addWidget(scroll_area)
+    self.page_tabs.addTab(overview_page, "Overview")
+
+    # ------------------------------------------------------------------
+    # Secondary Tabs
+    # ------------------------------------------------------------------
+    income_page = QtWidgets.QWidget()
+    income_layout = QtWidgets.QVBoxLayout(income_page)
+    income_label = QtWidgets.QLabel(f"Income Statement for {self.month_name}")
+    income_label.setAlignment(QtCore.Qt.AlignCenter)
+    income_layout.addWidget(income_label)
+    self.page_tabs.addTab(income_page, "Income Statement")
+
+    balance_page = QtWidgets.QWidget()
+    balance_layout = QtWidgets.QVBoxLayout(balance_page)
+    balance_label = QtWidgets.QLabel(f"Balance Sheet for {self.month_name}")
+    balance_label.setAlignment(QtCore.Qt.AlignCenter)
+    balance_layout.addWidget(balance_label)
+    self.page_tabs.addTab(balance_page, "Balance Sheet")
+
+    credit_page = QtWidgets.QWidget()
+    credit_layout = QtWidgets.QVBoxLayout(credit_page)
+    credit_label = QtWidgets.QLabel(f"Credit Card Report for {self.month_name}")
+    credit_label.setAlignment(QtCore.Qt.AlignCenter)
+    credit_layout.addWidget(credit_label)
+    self.page_tabs.addTab(credit_page, "Credit Card Report")
+
+    # Update the dashboard with selected month
+    self.dashboard_tab.update_dashboard(self.month_name)
+
+    # Utility function for adding movable docked widgets
+    def make_dock(title: str, widget: QtWidgets.QWidget, area: QtCore.Qt.DockWidgetArea) -> QtWidgets.QDockWidget:
+        dock = QtWidgets.QDockWidget(title, self)
+        dock.setObjectName(title.replace(" ", "") + "Dock")
+        dock.setWidget(widget)
+        dock.setAllowedAreas(QtCore.Qt.AllDockWidgetAreas)
+        dock.setFeatures(
+            QtWidgets.QDockWidget.DockWidgetMovable
+            | QtWidgets.QDockWidget.DockWidgetFloatable
         )
-        central = QtWidgets.QWidget()
-        central_layout = QtWidgets.QVBoxLayout(central)
-        self.page_tabs = QtWidgets.QTabWidget()
-        central_layout.addWidget(self.page_tabs)
-        self.setCentralWidget(central)
-
-        # ------------------------------------------------------------------
-        # Secondary tabs within each month
-        # ------------------------------------------------------------------
-        overview_page = QtWidgets.QWidget()
-        ov_layout = QtWidgets.QVBoxLayout(overview_page)
-        self.dashboard_tab = DashboardTab()
-        ov_layout.addWidget(self.dashboard_tab)
-        self.page_tabs.addTab(overview_page, "Overview")
-
-        income_page = QtWidgets.QWidget()
-        income_layout = QtWidgets.QVBoxLayout(income_page)
-        income_label = QtWidgets.QLabel(f"Income Statement for {self.month_name}")
-        income_label.setAlignment(QtCore.Qt.AlignCenter)
-        income_layout.addWidget(income_label)
-        self.page_tabs.addTab(income_page, "Income Statement")
-
-        balance_page = QtWidgets.QWidget()
-        balance_layout = QtWidgets.QVBoxLayout(balance_page)
-        balance_label = QtWidgets.QLabel(f"Balance Sheet for {self.month_name}")
-        balance_label.setAlignment(QtCore.Qt.AlignCenter)
-        balance_layout.addWidget(balance_label)
-        self.page_tabs.addTab(balance_page, "Balance Sheet")
-
-        credit_page = QtWidgets.QWidget()
-        credit_layout = QtWidgets.QVBoxLayout(credit_page)
-        credit_label = QtWidgets.QLabel(f"Credit Card Report for {self.month_name}")
-        credit_label.setAlignment(QtCore.Qt.AlignCenter)
-        credit_layout.addWidget(credit_label)
-        self.page_tabs.addTab(credit_page, "Credit Card Report")
-
-        self.dashboard_tab.update_dashboard(self.month_name)
-
-        def make_dock(title: str, widget: QtWidgets.QWidget, area: QtCore.Qt.DockWidgetArea) -> QtWidgets.QDockWidget:
-            dock = QtWidgets.QDockWidget(title, self)
-            dock.setObjectName(title.replace(" ", "") + "Dock")
-            dock.setWidget(widget)
-            dock.setAllowedAreas(QtCore.Qt.AllDockWidgetAreas)
-            dock.setFeatures(
-                QtWidgets.QDockWidget.DockWidgetMovable
-                | QtWidgets.QDockWidget.DockWidgetFloatable
-            )
-            self.addDockWidget(area, dock)
-            return dock
+        self.addDockWidget(area, dock)
+        return dock
 
         sections_info = [
             ("Income Table", "income"),
@@ -324,48 +338,29 @@ class MonthlyTab(QtWidgets.QMainWindow):
         provisions_section = TableSection("Provisions Table")
         cc_classifier_section = TableSection("Credit Card Classifier Table")
 
-        dock_map = {
-            "Income Table": QtCore.Qt.LeftDockWidgetArea,
-            "Expenses Table": QtCore.Qt.LeftDockWidgetArea,
-            "Withdrawals Table": QtCore.Qt.LeftDockWidgetArea,
-            "Assets Table": QtCore.Qt.LeftDockWidgetArea,
-            "Liabilities Table": QtCore.Qt.LeftDockWidgetArea,
-            "Net Worth Table": QtCore.Qt.LeftDockWidgetArea,
-            "Provisions Table": QtCore.Qt.RightDockWidgetArea,
-            "Credit Card Classifier Table": QtCore.Qt.RightDockWidgetArea,
-            "Cash at Month End Table": QtCore.Qt.RightDockWidgetArea,
-            "Cash Crosscheck Table": QtCore.Qt.RightDockWidgetArea,
-            "Asset Allocation Table": QtCore.Qt.RightDockWidgetArea,
-        }
+        passive_group.setObjectName("passive_income")
+        aa_chart_group.setObjectName("asset_allocation_charts")
+        self.asset_table_section.setObjectName("asset_allocation_table")
+        provisions_section.setObjectName("provisions")
+        cc_classifier_section.setObjectName("credit_card_classifier")
 
-
-        make_dock("Passive Income", passive_group, QtCore.Qt.RightDockWidgetArea)
-        make_dock("Asset Allocation Charts", aa_chart_group, QtCore.Qt.RightDockWidgetArea)
-        make_dock("Asset Allocation Table", self.asset_table_section, QtCore.Qt.RightDockWidgetArea)
-        make_dock("Provisions Table", provisions_section, QtCore.Qt.RightDockWidgetArea)
-        make_dock("Credit Card Classifier", cc_classifier_section, QtCore.Qt.RightDockWidgetArea)
+        for sec in self.sections:
+            self.area.add_section(sec)
+        self.area.add_section(passive_group)
+        self.area.add_section(aa_chart_group)
+        self.area.add_section(self.asset_table_section)
+        self.area.add_section(provisions_section)
+        self.area.add_section(cc_classifier_section)
 
         self._load_layout()
 
     def _load_layout(self) -> None:
-        """Restore dock layout from settings."""
-        settings = QtCore.QSettings("PFA", "DockLayout")
-        settings.beginGroup(self.objectName())
-        geom = settings.value("geometry")
-        state = settings.value("state")
-        if isinstance(geom, QtCore.QByteArray):
-            self.restoreGeometry(geom)
-        if isinstance(state, QtCore.QByteArray):
-            self.restoreState(state)
-        settings.endGroup()
+        """Restore saved section order."""
+        self.area.load_order()
 
     def save_layout(self) -> None:
-        """Persist the current dock layout."""
-        settings = QtCore.QSettings("PFA", "DockLayout")
-        settings.beginGroup(self.objectName())
-        settings.setValue("geometry", self.saveGeometry())
-        settings.setValue("state", self.saveState())
-        settings.endGroup()
+        """Persist the current section order."""
+        self.area.save_order()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:  # type: ignore[override]
         self.save_layout()
