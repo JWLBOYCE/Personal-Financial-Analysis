@@ -11,6 +11,7 @@ class LoginWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Personal Financial Analysis – Login")
+        self.setStyleSheet("background-color: lightblue;")
         self._load_password_hash()
         self._setup_ui()
         self.main_window = None

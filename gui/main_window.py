@@ -12,6 +12,7 @@ class MainWindow(QtWidgets.QMainWindow):
         super().__init__()
         self.setWindowTitle("Personal Financial Analysis")
         self.resize(1000, 600)
+        self.setStyleSheet("background-color: lightblue;")
         self._setup_menu()
         self._setup_ui()
 
