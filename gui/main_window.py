@@ -3,6 +3,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import sqlite3
 from logic.categoriser import DB_PATH, _ensure_db
+from .data_import_panel import DataImportPanel
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -55,7 +56,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Top tab bar
         self.tab_bar = QtWidgets.QTabBar(movable=False)
-        self.tabs = ["Income", "Expenses", "Credit Card", "Summary", "Admin"]
+        self.tabs = [
+            "Income",
+            "Expenses",
+            "Credit Card",
+            "Summary",
+            "Admin",
+            "Data Import",
+        ]
         for tab in self.tabs:
             self.tab_bar.addTab(tab)
         self.tab_bar.currentChanged.connect(self.switch_tab)
@@ -114,6 +122,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
                 self.stack.addWidget(admin_widget)
                 self.admin_widget = admin_widget
+            elif tab == "Data Import":
+                import_widget = DataImportPanel()
+                self.stack.addWidget(import_widget)
+                self.import_widget = import_widget
             else:
                 table = QtWidgets.QTableWidget(0, 4)
                 table.setHorizontalHeaderLabels(
