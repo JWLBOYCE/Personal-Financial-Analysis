@@ -1,3 +1,5 @@
+import os
+import json
 from PyQt5 import QtWidgets, QtCore
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -14,8 +16,29 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle("Personal Financial Analysis")
         self.resize(1000, 600)
         self.setStyleSheet("background-color: lightblue;")
+
+        self.config_path = os.path.join(os.path.dirname(__file__), "..", "config.json")
+        self.sidebar_visible = True
+        self._load_config()
+
         self._setup_menu()
         self._setup_ui()
+
+    def _load_config(self) -> None:
+        """Load sidebar visibility from config file."""
+        if os.path.exists(self.config_path):
+            try:
+                with open(self.config_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                self.sidebar_visible = data.get("sidebar_visible", True)
+            except Exception:
+                self.sidebar_visible = True
+
+    def _save_config(self) -> None:
+        """Persist sidebar visibility to config file."""
+        data = {"sidebar_visible": self.sidebar_visible}
+        with open(self.config_path, "w", encoding="utf-8") as f:
+            json.dump(data, f)
 
     def _setup_menu(self):
         menubar = self.menuBar()
@@ -37,17 +60,22 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(main_widget)
         main_layout = QtWidgets.QHBoxLayout(main_widget)
 
-        # Left sidebar with months
+        # Sidebar dock
+        self.month_dock = QtWidgets.QDockWidget("Months", self)
         self.month_list = QtWidgets.QListWidget()
-        months = [
-            "Jan 2023",
-            "Feb 2023",
-            "Mar 2023",
-            "Apr 2023",
-        ]
-        self.month_list.addItems(months)
+        self.month_dock.setWidget(self.month_list)
+        self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.month_dock)
         self.month_list.currentTextChanged.connect(self.load_dummy_data)
-        main_layout.addWidget(self.month_list, 1)
+        if not self.sidebar_visible:
+            self.month_dock.hide()
+
+        # Toggle button in a toolbar
+        self.toolbar = QtWidgets.QToolBar()
+        self.addToolBar(QtCore.Qt.TopToolBarArea, self.toolbar)
+        self.toggle_action = self.toolbar.addAction("\u2630")
+        self.toggle_action.triggered.connect(self.toggle_sidebar)
+
+        self._load_months()
 
         # Right side layout
         right_widget = QtWidgets.QWidget()
@@ -329,6 +357,29 @@ class MainWindow(QtWidgets.QMainWindow):
             self, "Retrain", "Classifier retrained from scratch."
         )
         self.load_mappings()
+
+    def toggle_sidebar(self) -> None:
+        """Show or hide the month sidebar."""
+        visible = not self.month_dock.isVisible()
+        self.month_dock.setVisible(visible)
+        self.sidebar_visible = visible
+        self._save_config()
+
+    def _load_months(self) -> None:
+        """Populate month list from the database."""
+        self.month_list.clear()
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        _ensure_db(conn)
+        cur = conn.execute("SELECT name FROM months ORDER BY start_date")
+        months = [row["name"] for row in cur.fetchall()]
+        conn.close()
+        if months:
+            self.month_list.addItems(months)
+
+    def closeEvent(self, event: QtCore.QEvent) -> None:
+        self._save_config()
+        super().closeEvent(event)
 
 
 __all__ = ["MainWindow"]
