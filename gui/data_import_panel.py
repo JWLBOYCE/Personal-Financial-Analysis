@@ -1,8 +1,10 @@
 from PyQt5 import QtWidgets
 import os
 import sqlite3
+import csv
 
 from parser import parse_csv
+from parser.auto_mapper import guess_column_mapping
 from logic.categoriser import DB_PATH, _ensure_db
 
 
@@ -26,6 +28,26 @@ class DataImportPanel(QtWidgets.QWidget):
 
         self.selected_files = []
 
+    def _confirm_mapping(self, headers: list[str], mapping: dict[str, str]) -> dict[str, str]:
+        headers_display = [h.strip() for h in headers]
+        headers_lower = [h.lower() for h in headers_display]
+        result = {}
+        for key in ["date", "description", "amount"]:
+            current = mapping.get(key, "")
+            idx = headers_lower.index(current) if current in headers_lower else 0
+            choice, ok = QtWidgets.QInputDialog.getItem(
+                self,
+                "Column Mapping",
+                f"Select column for {key}",
+                headers_display,
+                idx,
+                False,
+            )
+            if not ok:
+                raise ValueError("Mapping cancelled")
+            result[key] = headers_lower[headers_display.index(choice)]
+        return result
+
     def select_files(self) -> None:
         paths, _ = QtWidgets.QFileDialog.getOpenFileNames(
             self,
@@ -47,7 +69,13 @@ class DataImportPanel(QtWidgets.QWidget):
         _ensure_db(conn)
         for path in self.selected_files:
             try:
-                transactions = parse_csv(path)
+                with open(path, newline="", encoding="utf-8-sig") as f:
+                    reader = csv.reader(f)
+                    headers = next(reader)
+                    sample = next(reader, [])
+                mapping = guess_column_mapping(headers, sample)
+                mapping = self._confirm_mapping(headers, mapping)
+                transactions = parse_csv(path, mapping)
             except Exception as exc:
                 QtWidgets.QMessageBox.warning(
                     self,
