@@ -24,24 +24,32 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.config_path = os.path.join(os.path.dirname(__file__), "..", "config.json")
         self.sidebar_visible = True
+        self.report_logo = ""
+        self.report_footer = ""
         self._load_config()
 
         self._setup_menu()
         self._setup_ui()
 
     def _load_config(self) -> None:
-        """Load sidebar visibility from config file."""
+        """Load UI settings from config file."""
         if os.path.exists(self.config_path):
             try:
                 with open(self.config_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 self.sidebar_visible = data.get("sidebar_visible", True)
+                self.report_logo = data.get("report_logo", "")
+                self.report_footer = data.get("report_footer", "")
             except Exception:
                 self.sidebar_visible = True
 
     def _save_config(self) -> None:
-        """Persist sidebar visibility to config file."""
-        data = {"sidebar_visible": self.sidebar_visible}
+        """Persist UI settings to config file."""
+        data = {
+            "sidebar_visible": self.sidebar_visible,
+            "report_logo": self.report_logo,
+            "report_footer": self.report_footer,
+        }
         with open(self.config_path, "w", encoding="utf-8") as f:
             json.dump(data, f)
 
@@ -484,36 +492,45 @@ class MainWindow(QtWidgets.QMainWindow):
         self.load_mappings()
 
     def export_pdf_report(self) -> None:
-        """Prompt for location and generate a PDF summary report."""
+        """Configure options and generate a PDF summary report."""
         if self.month_list.currentItem() is None:
             QtWidgets.QMessageBox.information(self, "Export", "No month selected.")
             return
+
+        from .report_export_dialog import ReportExportDialog
+
         month = self.month_list.currentItem().text()
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Save PDF Report", "", "PDF Files (*.pdf)"
-        )
-        if not path:
+        dialog = ReportExportDialog(self.report_logo, self.report_footer, self)
+        if dialog.exec_() != QtWidgets.QDialog.Accepted:
             return
-        tone_choice, ok = QtWidgets.QInputDialog.getItem(
-            self,
-            "Report Tone",
-            "Select tone:",
-            ["Formal", "Plain English"],
-            0,
-            False,
-        )
-        tone = "plain" if ok and tone_choice.lower().startswith("plain") else "formal"
+        opts = dialog.get_options()
+        self.report_logo = opts["logo"]
+        self.report_footer = opts["footer"]
+        self._save_config()
+
+        export_dir = os.path.join(os.path.dirname(__file__), "..", "exports")
+        os.makedirs(export_dir, exist_ok=True)
+        safe_month = month.replace(" ", "-")
+        filename = f"report_{safe_month}_{opts['tone']}.pdf"
+        path = os.path.join(export_dir, filename)
         try:
             from logic.report_generator import generate_monthly_report
 
-            generate_monthly_report(month, path, tone=tone)
+            generate_monthly_report(
+                month,
+                path,
+                tone=opts["tone"],
+                theme=opts["theme"],
+                logo_path=self.report_logo,
+                footer=self.report_footer,
+            )
         except Exception as exc:
             QtWidgets.QMessageBox.warning(
                 self, "Export Error", f"Failed to export report:\n{exc}"
             )
         else:
             QtWidgets.QMessageBox.information(
-                self, "Export", "Report exported successfully."
+                self, "Export", f"Report exported to {path}"
             )
 
     def toggle_sidebar(self) -> None:
