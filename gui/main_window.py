@@ -1,6 +1,9 @@
 import os
 import json
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
+
+# Custom role for predicted category confidence
+PREDICT_ROLE = QtCore.Qt.UserRole + 1
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import sqlite3
@@ -183,6 +186,10 @@ class MainWindow(QtWidgets.QMainWindow):
                     "Credit Card": "CreditCardTable",
                 }
                 table.setObjectName(name_map.get(tab, "Table"))
+                table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+                table.customContextMenuRequested.connect(
+                    lambda pos, t=table: self.show_tx_menu(t, pos)
+                )
                 self.stack.addWidget(table)
                 self.tables.append(table)
 
@@ -220,10 +227,14 @@ class MainWindow(QtWidgets.QMainWindow):
             for i in range(5):
                 table.insertRow(i)
                 date_item = QtWidgets.QTableWidgetItem(f"2023-01-{i+1:02d}")
+                date_item.setData(QtCore.Qt.UserRole, i + 1)
                 desc_item = QtWidgets.QTableWidgetItem(
                     f"{month} transaction {i+1}"
                 )
                 cat_item = QtWidgets.QTableWidgetItem("Misc")
+                cat_item.setData(PREDICT_ROLE, 0.75)
+                cat_item.setBackground(QtGui.QColor("#ffffcc"))
+                cat_item.setToolTip("Auto-assigned (75% confidence)")
                 amt_item = QtWidgets.QTableWidgetItem(f"{(i+1)*10:.2f}")
                 for col, item in enumerate(
                     [date_item, desc_item, cat_item, amt_item]
@@ -289,6 +300,84 @@ class MainWindow(QtWidgets.QMainWindow):
         ax.set_ylabel("Amount")
         self.figure.tight_layout()
         self.canvas.draw()
+
+    # ------------------------------------------------------------------
+    # Context menu helpers
+    # ------------------------------------------------------------------
+    def _get_categories(self) -> list[tuple[int, str]]:
+        """Return list of available categories."""
+        conn = self._get_conn()
+        cur = conn.execute("SELECT id, name FROM categories ORDER BY name")
+        rows = [(r["id"], r["name"]) for r in cur.fetchall()]
+        conn.close()
+        return rows
+
+    def show_tx_menu(self, table: QtWidgets.QTableWidget, pos: QtCore.QPoint) -> None:
+        item = table.itemAt(pos)
+        if item is None:
+            return
+        row = item.row()
+        menu = QtWidgets.QMenu(table)
+        act_change = menu.addAction("Change Category")
+        act_recurring = menu.addAction("Mark as Recurring")
+        act_details = menu.addAction("View Details")
+        action = menu.exec_(table.viewport().mapToGlobal(pos))
+        if action == act_change:
+            self._edit_category_inline(table, row)
+        elif action == act_recurring:
+            self._mark_transaction_recurring(table, row)
+        elif action == act_details:
+            self._view_transaction_details(table, row)
+
+    def _edit_category_inline(self, table: QtWidgets.QTableWidget, row: int) -> None:
+        rect = table.visualItemRect(table.item(row, 2))
+        combo = QtWidgets.QComboBox(table)
+        for cid, name in self._get_categories():
+            combo.addItem(name, cid)
+        current = table.item(row, 2).text()
+        idx = combo.findText(current)
+        if idx >= 0:
+            combo.setCurrentIndex(idx)
+        combo.setGeometry(rect)
+        combo.show()
+        combo.setFocus()
+        combo.activated.connect(lambda _=None, c=combo, r=row, t=table: self._category_selected(t, r, c))
+
+    def _category_selected(self, table: QtWidgets.QTableWidget, row: int, combo: QtWidgets.QComboBox) -> None:
+        name = combo.currentText()
+        cid = combo.currentData()
+        new_item = QtWidgets.QTableWidgetItem(name)
+        table.setItem(row, 2, new_item)
+        tx_id = table.item(row, 0).data(QtCore.Qt.UserRole)
+        if tx_id is not None:
+            conn = self._get_conn()
+            conn.execute("UPDATE transactions SET category = ? WHERE id = ?", (cid, tx_id))
+            conn.commit()
+            conn.close()
+        new_item.setData(PREDICT_ROLE, None)
+        new_item.setBackground(QtGui.QColor())
+        new_item.setToolTip("")
+        combo.deleteLater()
+
+    def _mark_transaction_recurring(self, table: QtWidgets.QTableWidget, row: int) -> None:
+        tx_id = table.item(row, 0).data(QtCore.Qt.UserRole)
+        if tx_id is not None:
+            conn = self._get_conn()
+            conn.execute("UPDATE transactions SET is_recurring = 1 WHERE id = ?", (tx_id,))
+            conn.commit()
+            conn.close()
+        QtWidgets.QMessageBox.information(self, "Recurring", "Transaction marked as recurring")
+
+    def _view_transaction_details(self, table: QtWidgets.QTableWidget, row: int) -> None:
+        date = table.item(row, 0).text()
+        desc = table.item(row, 1).text()
+        cat = table.item(row, 2).text()
+        amt = table.item(row, 3).text()
+        QtWidgets.QMessageBox.information(
+            self,
+            "Transaction Details",
+            f"Date: {date}\nDescription: {desc}\nCategory: {cat}\nAmount: {amt}",
+        )
 
     def _get_conn(self) -> sqlite3.Connection:
         conn = sqlite3.connect(DB_PATH)
