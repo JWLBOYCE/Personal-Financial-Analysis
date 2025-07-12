@@ -160,6 +160,12 @@ class MainWindow(QtWidgets.QMainWindow):
                     ["Date", "Description", "Category", "Amount"]
                 )
                 table.horizontalHeader().setStretchLastSection(True)
+                name_map = {
+                    "Income": "IncomeTable",
+                    "Expenses": "ExpensesTable",
+                    "Credit Card": "CreditCardTable",
+                }
+                table.setObjectName(name_map.get(tab, "Table"))
                 self.stack.addWidget(table)
                 self.tables.append(table)
 
