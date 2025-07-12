@@ -5,6 +5,7 @@ import csv
 
 from parser import parse_csv
 from parser.auto_mapper import guess_column_mapping
+from parser.profile_manager import load_profiles, match_profile, add_profile
 from logic.categoriser import DB_PATH, _ensure_db
 
 
@@ -73,8 +74,35 @@ class DataImportPanel(QtWidgets.QWidget):
                     reader = csv.reader(f)
                     headers = next(reader)
                     sample = next(reader, [])
-                mapping = guess_column_mapping(headers, sample)
+
+                profiles = load_profiles()
+                profile_name, mapping = match_profile(headers, profiles)
+                if not mapping:
+                    mapping = guess_column_mapping(headers, sample)
+
                 mapping = self._confirm_mapping(headers, mapping)
+
+                if profile_name:
+                    if mapping != {v: k.lower() for k, v in profiles[profile_name].items()}:
+                        reply = QtWidgets.QMessageBox.question(
+                            self,
+                            "Update Mapping",
+                            f"Would you like to save this mapping for future {profile_name} imports?",
+                        )
+                        if reply == QtWidgets.QMessageBox.Yes:
+                            add_profile(profile_name, headers, mapping)
+                else:
+                    reply = QtWidgets.QMessageBox.question(
+                        self,
+                        "Save Mapping",
+                        "Would you like to save this mapping for future imports?",
+                    )
+                    if reply == QtWidgets.QMessageBox.Yes:
+                        name, ok = QtWidgets.QInputDialog.getText(
+                            self, "Profile Name", "Institution name:")
+                        if ok and name:
+                            add_profile(name, headers, mapping)
+
                 transactions = parse_csv(path, mapping)
             except Exception as exc:
                 QtWidgets.QMessageBox.warning(
