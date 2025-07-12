@@ -84,6 +84,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.toggle_action = self.toolbar.addAction("\u2630")
         self.toggle_action.triggered.connect(self.toggle_sidebar)
 
+        self.export_pdf_action = self.toolbar.addAction("Export PDF Report")
+        self.export_pdf_action.triggered.connect(self.export_pdf_report)
+
         self._load_months()
 
         # Right side layout
@@ -390,6 +393,39 @@ class MainWindow(QtWidgets.QMainWindow):
             self, "Retrain", "Classifier retrained from scratch."
         )
         self.load_mappings()
+
+    def export_pdf_report(self) -> None:
+        """Prompt for location and generate a PDF summary report."""
+        if self.month_list.currentItem() is None:
+            QtWidgets.QMessageBox.information(self, "Export", "No month selected.")
+            return
+        month = self.month_list.currentItem().text()
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self, "Save PDF Report", "", "PDF Files (*.pdf)"
+        )
+        if not path:
+            return
+        tone_choice, ok = QtWidgets.QInputDialog.getItem(
+            self,
+            "Report Tone",
+            "Select tone:",
+            ["Formal", "Plain English"],
+            0,
+            False,
+        )
+        tone = "plain" if ok and tone_choice.lower().startswith("plain") else "formal"
+        try:
+            from logic.report_generator import generate_monthly_report
+
+            generate_monthly_report(month, path, tone=tone)
+        except Exception as exc:
+            QtWidgets.QMessageBox.warning(
+                self, "Export Error", f"Failed to export report:\n{exc}"
+            )
+        else:
+            QtWidgets.QMessageBox.information(
+                self, "Export", "Report exported successfully."
+            )
 
     def toggle_sidebar(self) -> None:
         """Show or hide the month sidebar."""
