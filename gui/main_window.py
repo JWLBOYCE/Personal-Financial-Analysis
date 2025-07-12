@@ -6,6 +6,7 @@ from matplotlib.figure import Figure
 import sqlite3
 from logic.categoriser import DB_PATH, _ensure_db
 from .data_import_panel import DataImportPanel
+from .category_manager_dialog import CategoryManagerDialog
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -53,6 +54,12 @@ class MainWindow(QtWidgets.QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(exit_action)
         exit_action.triggered.connect(QtWidgets.qApp.quit)
+
+        tools_menu = menubar.addMenu("Tools")
+        self.category_manager_action = QtWidgets.QAction("Category Manager", self)
+        tools_menu.addAction(self.category_manager_action)
+        self.category_manager_action.triggered.connect(self.open_category_manager)
+
         menubar.addMenu("Help")
 
     def _setup_ui(self):
@@ -346,6 +353,11 @@ class MainWindow(QtWidgets.QMainWindow):
         conn.commit()
         conn.close()
         self.load_mappings()
+
+    def open_category_manager(self) -> None:
+        """Open the category management dialog."""
+        dialog = CategoryManagerDialog(self)
+        dialog.exec_()
 
     def retrain_classifier(self) -> None:
         reply = QtWidgets.QMessageBox.question(
