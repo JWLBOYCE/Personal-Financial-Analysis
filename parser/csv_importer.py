@@ -30,20 +30,27 @@ def _find_column(columns: List[str], names: List[str]) -> Optional[str]:
     return None
 
 
-def parse_csv(file_path: str) -> List[Dict[str, Any]]:
+def parse_csv(file_path: str, mapping: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
     """Parse a CSV bank statement and return standardized transactions."""
     df = pd.read_csv(file_path)
     df.columns = [c.strip().lower() for c in df.columns]
 
-    date_col = _find_column(
-        df.columns.tolist(),
-        ["date", "transaction date", "posted date", "created"],
-    )
-    desc_col = _find_column(
-        df.columns.tolist(),
-        ["description", "memo", "reference", "details", "transaction description"],
-    )
-    amount_col = _find_column(df.columns.tolist(), ["amount", "value"])
+    if mapping:
+        mapping = {k: v.lower() for k, v in mapping.items()}
+        date_col = mapping.get("date")
+        desc_col = mapping.get("description")
+        amount_col = mapping.get("amount")
+    else:
+        date_col = _find_column(
+            df.columns.tolist(),
+            ["date", "transaction date", "posted date", "created"],
+        )
+        desc_col = _find_column(
+            df.columns.tolist(),
+            ["description", "memo", "reference", "details", "transaction description"],
+        )
+        amount_col = _find_column(df.columns.tolist(), ["amount", "value"])
+
 
     if amount_col is None:
         credit_col = _find_column(
