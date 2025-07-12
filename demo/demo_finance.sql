@@ -44,4 +44,11 @@ CREATE TABLE import_logs (
     date TEXT NOT NULL,
     type TEXT NOT NULL
 );
+
+CREATE TABLE layout_order (
+    month_id INTEGER NOT NULL,
+    table_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    PRIMARY KEY (month_id, table_id)
+);
 COMMIT;

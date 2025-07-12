@@ -47,3 +47,11 @@ CREATE TABLE IF NOT EXISTS import_logs (
     type TEXT NOT NULL
 );
 
+-- Table for saving widget order within a month
+CREATE TABLE IF NOT EXISTS layout_order (
+    month_id INTEGER NOT NULL,
+    table_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    PRIMARY KEY (month_id, table_id)
+);
+
