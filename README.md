@@ -54,6 +54,14 @@ The schema defines tables for transactions, months, categories, keyword mappings
 - The application currently loads sample months on startup. Transaction data can be added by importing statements or by entering transactions manually.
 - Recurring transactions can be duplicated to a new month using utilities in `logic/month_manager.py`.
 
+### Import Profiles
+
+Mappings for CSV headers can be stored in `config/import_profiles.json`.
+When importing a statement the headers are compared against these profiles
+using fuzzy matching. When a close match is found the mapping is applied
+automatically and you will be prompted to save any changes back to the
+profile.
+
 ## Mobile Companion Server
 
 The optional Flask server in `api/server.py` exposes your finance data over HTTPS.
