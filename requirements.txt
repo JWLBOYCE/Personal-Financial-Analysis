@@ -7,3 +7,4 @@ python-dotenv
 matplotlib
 Flask
 flask-cors
+pyngrok
