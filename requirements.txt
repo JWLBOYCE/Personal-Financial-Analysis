@@ -4,3 +4,5 @@ pdfplumber
 openai
 python-dotenv
 matplotlib
+Flask
+flask-cors
