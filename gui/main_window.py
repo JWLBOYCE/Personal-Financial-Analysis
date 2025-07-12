@@ -7,6 +7,7 @@ import sqlite3
 from logic.categoriser import DB_PATH, _ensure_db
 from .data_import_panel import DataImportPanel
 from .category_manager_dialog import CategoryManagerDialog
+from .forecast_widget import ForecastWidget
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -73,6 +74,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.month_dock.setWidget(self.month_list)
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.month_dock)
         self.month_list.currentTextChanged.connect(self.load_dummy_data)
+        self.month_list.currentTextChanged.connect(self.update_forecast)
         if not self.sidebar_visible:
             self.month_dock.hide()
 
@@ -96,6 +98,7 @@ class MainWindow(QtWidgets.QMainWindow):
             "Expenses",
             "Credit Card",
             "Summary",
+            "Forecast",
             "Admin",
             "Data Import",
         ]
@@ -129,6 +132,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
                 self.stack.addWidget(summary_widget)
                 self.summary_widget = summary_widget
+            elif tab == "Forecast":
+                forecast_widget = ForecastWidget()
+                self.stack.addWidget(forecast_widget)
+                self.forecast_widget = forecast_widget
             elif tab == "Admin":
                 admin_widget = QtWidgets.QWidget()
                 admin_layout = QtWidgets.QVBoxLayout(admin_widget)
@@ -195,6 +202,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Initialize with dummy data for the first month
         self.month_list.setCurrentRow(0)
+        if self.month_list.currentItem() is not None:
+            self.update_forecast(self.month_list.currentItem().text())
 
     def switch_tab(self, index: int):
         self.stack.setCurrentIndex(index)
@@ -219,6 +228,12 @@ class MainWindow(QtWidgets.QMainWindow):
                     table.setItem(i, col, item)
 
         self._update_summary()
+        self.update_forecast(month)
+
+    def update_forecast(self, month: str) -> None:
+        """Refresh projection display for the selected month."""
+        if hasattr(self, "forecast_widget"):
+            self.forecast_widget.refresh(month)
 
     def _update_summary(self) -> None:
         """Update the summary table and chart."""
