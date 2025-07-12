@@ -54,6 +54,15 @@ The schema defines tables for transactions, months, categories, keyword mappings
 - The application currently loads sample months on startup. Transaction data can be added by importing statements or by entering transactions manually.
 - Recurring transactions can be duplicated to a new month using utilities in `logic/month_manager.py`.
 
+## Mobile Companion Server
+
+The optional Flask server in `api/server.py` exposes your finance data over HTTPS.
+Set `ACCESS_TOKEN` in `.env` and provide the token in the `Authorization` header
+for all requests. By default the server uses `cert.pem` and `key.pem` for SSL.
+If `USE_NGROK=true` is set, the server will create a temporary public HTTPS
+tunnel using **pyngrok**. All access attempts are logged to `access.log` with the
+client IP and request path.
+
 ## License
 
 This project is released under the MIT License. See the [LICENSE](LICENSE) file for more information.
