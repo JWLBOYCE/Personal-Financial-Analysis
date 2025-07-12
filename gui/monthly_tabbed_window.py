@@ -1,6 +1,8 @@
 from PyQt5 import QtWidgets
 import sip
 
+from .overview_section import OverviewSection
+
 class ReorderableScrollArea(QtWidgets.QScrollArea):
     """Scroll area that exposes its container and layout."""
     def __init__(self, parent=None):
@@ -25,15 +27,22 @@ class MonthlyTab(QtWidgets.QWidget):
         self.container = self.area.container
         self._layout = self.area._layout
 
+        self.overview = OverviewSection()
+        self._layout.addWidget(self.overview)
+
         outer_layout = QtWidgets.QVBoxLayout(self)
         outer_layout.addWidget(self.area)
-
+        
     def add_section(self, widget: QtWidgets.QWidget) -> None:
         """Add a new section widget to the tab."""
         if sip.isdeleted(self._layout):
             print("Skipped add_section: layout has been deleted.")
             return
         self._layout.addWidget(widget)
+
+    def refresh_overview(self) -> None:
+        """Refresh charts in the overview section."""
+        self.overview.refresh()
 
 class MonthlyTabbedWindow(QtWidgets.QMainWindow):
     """Main window showing a tab of monthly sections."""
@@ -48,3 +57,7 @@ class MonthlyTabbedWindow(QtWidgets.QMainWindow):
         # keep references so layout/container persist
         self._central_container = central
         self._central_layout = layout
+
+    def refresh_overview(self) -> None:
+        """Refresh charts for the current month."""
+        self.monthly_tab.refresh_overview()
